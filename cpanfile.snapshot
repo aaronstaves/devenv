@@ -219,6 +219,13 @@ DISTRIBUTIONS
       perl 5.006
       strict 0
       warnings 0
+  File-Which-1.18
+    pathname: P/PL/PLICEASE/File-Which-1.18.tar.gz
+    provides:
+      File::Which 1.18
+    requirements:
+      ExtUtils::MakeMaker 0
+      perl 5.008001
   Getopt-Long-Descriptive-0.099
     pathname: R/RJ/RJBS/Getopt-Long-Descriptive-0.099.tar.gz
     provides:
@@ -250,6 +257,19 @@ DISTRIBUTIONS
       Symbol 0
       strict 0
       warnings 0
+  IPC-Run-0.94
+    pathname: T/TO/TODDR/IPC-Run-0.94.tar.gz
+    provides:
+      IPC::Run 0.94
+      IPC::Run::Debug 0.90
+      IPC::Run::IO 0.90
+      IPC::Run::Timer 0.90
+      IPC::Run::Win32Helper 0.90
+      IPC::Run::Win32IO 0.90
+      IPC::Run::Win32Pump 0.90
+    requirements:
+      ExtUtils::MakeMaker 0
+      Test::More 0.47
   List-MoreUtils-0.413
     pathname: R/RE/REHSACK/List-MoreUtils-0.413.tar.gz
     provides:
