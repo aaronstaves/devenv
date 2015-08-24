@@ -8,6 +8,9 @@ has '_vm' => (
 	isa => 'DevEnv::VM::Module',
 	handles => [
 		qw/
+			start
+			stop
+			remove
 			build
 		/
 	]

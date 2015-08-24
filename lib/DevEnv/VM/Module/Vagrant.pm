@@ -93,7 +93,19 @@ override 'start' => sub {
 };
 
 sub stop  { }
-sub halt  { }
+
+override 'remove' => sub { 
+
+	my $self = shift;
+
+	$self->debug( "Removing Vagrant box" );
+
+	system sprintf( "cd %s; %s destroy -f", $self->instance_dir, $self->vagrant );
+
+	remove_tree $self->instance_dir->stringify;
+
+	return undef;
+};
 
 sub _copy_devenv_to_vagrant {
 
@@ -115,8 +127,9 @@ sub _copy_devenv_to_vagrant {
 #	remove_tree $self->external_temp_dir->subdir( "devenv", "images" )->stringify;
 
 # 	TODO: Also check .devenv for custom configs
-	
-	
+
+
+	return undef;
 }
 
 override 'build' => sub {
@@ -200,7 +213,9 @@ override 'build' => sub {
 	system sprintf( "cd %s; %s up", $self->instance_dir, $self->vagrant );
 
 	system sprintf( "cd %s; %s ssh", $self->instance_dir, $self->vagrant );
+	#system sprintf( "cd %s; %s ssh -c 'devenv docker --start'", $self->instance_dir, $self->vagrant );
 
+	return undef;
 };
 
 __PACKAGE__->meta->make_immutable;

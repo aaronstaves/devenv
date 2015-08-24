@@ -24,7 +24,7 @@ containers:
     name: data
     type: data
     image: 
-      name: data_perl
+      name: perl
     envs:
       - name: PERL_VERSION
         value: 5.18.0
@@ -32,7 +32,7 @@ containers:
     name: work
     type: work
     image: 
-      name: work_debian_jessie
+      name: debian_jessie
     system:
       network: 
         type: bridge

@@ -85,10 +85,10 @@ sub avahi_service {
 	return $service_text;
 }
 
-sub start { }
-sub stop  { }
-sub halt  { }
-sub build { }
+sub start  { }
+sub stop   { }
+sub remove { }
+sub build  { }
 
 __PACKAGE__->meta->make_immutable;
 

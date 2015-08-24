@@ -6,7 +6,7 @@ with 'DevEnv::Role::Project';
 
 use DevEnv::Docker::Control;
 
-use Data::Dumper;
+use Path::Class;
 
 has 'control' => (
 	is       => 'ro',
@@ -16,6 +16,13 @@ has 'control' => (
 );
 sub _build_control { return DevEnv::Docker::Control->new() }
 
+has 'image_dir' => (
+	is       => 'ro',
+	isa      => 'Path::Class::Dir',
+	lazy     => 1,
+	builder  => '_build_image_dir',
+);
+sub _build_image_dir { return shift->base_dir->subdir( "images" ) }
 
 sub _container_order {
 
@@ -67,7 +74,7 @@ sub _image_name {
 	my $container_name = $args{container_name};
 	my $config = $self->config->{containers}{ $container_name };
 
-	return "devenv/" . $config->{image}{name};
+	return "devenv/" . sprintf( "%s_%s", $config->{type}, $config->{image}{name} );
 }
 
 sub _image_name_version {
@@ -152,6 +159,8 @@ sub start {
 	# Get the order that the containers should be started
 	while ( my $container_name = shift @container_order ) {
 
+		$self->debug( "Starting image $container_name" );
+
 		my $config = $self->config->{containers}{ $container_name };
 
 		my $is_last_container = ( 
@@ -160,14 +169,21 @@ sub start {
 			( defined $args{start_until} and $args{start_until} eq $container_name )
 		)?1:0;
 
-		print STDERR "Last Container = $is_last_container\n";
+		# If the container doesn't exists, try to build it
+		if ( not defined $images->{$container_name} ) {
+
+			# TODO: Attempt to download it
+
+			$self->debug( "Image $container_name does not exist. Find or build it" );
+
+			$self->build(
+				container_name => $container_name
+			);
+		}
 
 		my $instance_name = $self->_instance_name( $container_name );
 
-		# If the container doesn't exists, try to build it
-		if ( not defined $images->{$container_name} ) {
-			# TODO: Build container
-		}
+		$self->debug( "Instance name is $instance_name" );
 
 		my @command = ();
 
@@ -183,8 +199,7 @@ sub start {
 				push @command, "restart";
 			}
 			else {
-				print STDERR "Unknown status $status, skipping containter start\n";
-				next;
+				die "Don't know what to do with status $status";
 			}
 
 			push @command, $ps->{ $instance_name }{container_id};
@@ -240,11 +255,17 @@ sub build {
 	my $self = shift;
 	my %args = @_;
 
+	my $container_name = $args{container_name};
 
-	
+	my $config = $self->config->{containers}{ $container_name };
 
+	my $makefile_dir = $self->image_dir->subdir( $config->{type}, $config->{image}{name} );
 
+	$self->debug( "Build image with Makefile at $makefile_dir" );
 
+	my $PARAMS="";
+
+	system "cd $makefile_dir; $PARAMS make";
 }
 
 __PACKAGE__->meta->make_immutable;

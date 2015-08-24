@@ -44,7 +44,9 @@ has 'instance' => (
     is            => 'rw',
 	cmd_aliases   => 'i',
 	documentation => "Give the instance a different name",
-	default       => "dockit"
+	default       => sub {
+		return $ENV{DEVENV_NAME};
+	}
 );
 
 has 'force' => (

@@ -11,28 +11,28 @@ has 'start' => (
     traits        => [ "Getopt" ],
     isa           => 'Bool',
     is            => 'rw',
-	documentation => "Start the containers based on config"
+	documentation => "Start the VM"
 );
 
 has 'stop' => (
     traits        => [ "Getopt" ],
     isa           => 'Bool',
     is            => 'rw',
-	documentation => "Stop the running containers"
+	documentation => "Stop the VM"
 );
 
-has 'halt' => (
+has 'remove' => (
     traits        => [ "Getopt" ],
     isa           => 'Bool',
     is            => 'rw',
-	documentation => "Remove the containers"
+	documentation => "Remove the VM"
 );
 
 has 'build' => (
     traits        => [ "Getopt" ],
     isa           => 'Bool',
     is            => 'rw',
-	documentation => "Remove the containers"
+	documentation => "Build the VM"
 );
 
 has 'tag' => (
@@ -119,7 +119,7 @@ after 'execute' => sub {
 
 		$vm->stop( tags => $self->tag );
 	}
-	elsif ( $self->halt ) {
+	elsif ( $self->remove ) {
 
 		$vm->remove(   );
 	}
