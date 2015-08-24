@@ -1,0 +1,12 @@
+<?xml version="1.0" standalone='no'?>
+<!DOCTYPE service-group SYSTEM "avahi-service.dtd">
+<service-group>
+	<name replace-wildcards="yes">[% box_name %] [% name %]</name>  
+	<service>
+		<type>_[% service %]._[% protocal or "tcp" %]</type>
+		<port>[% port %]</port>
+		[% FOREACH text IN records %]
+		<txt-record>[% text %]</txt-record>
+		[% END %]
+	</service>
+</service-group>

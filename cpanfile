@@ -1,5 +1,11 @@
 requires 'Moose';
 requires 'MooseX::App::Cmd';
 requires 'MooseX::App::Cmd::Command';
+requires 'MooseX::Singleton';
 requires 'IPC::Run';
 requires 'File::Which';
+requires 'File::Fetch';
+requires 'YAML::Tiny';
+requires 'Path::Class';
+requires 'Template';
+requires 'App::FatPacker';

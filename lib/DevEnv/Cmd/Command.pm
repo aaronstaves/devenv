@@ -3,7 +3,7 @@ use Moose;
 
 extends 'MooseX::App::Cmd::Command';
 
-opt 'verbose' => (
+has 'verbose' => (
 	traits        => [ "Getopt" ],
 	isa           => 'Bool',
 	is            => 'rw',

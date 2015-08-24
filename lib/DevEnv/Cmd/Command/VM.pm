@@ -1,9 +1,9 @@
-package DevEnv::Cmd::Command::Docker;
+package DevEnv::Cmd::Command::VM;
 use Moose;
 
 # ABSTRACT: Docker Control
 
-use DevEnv::Docker;
+use DevEnv::VM;
 
 extends 'DevEnv::Cmd::Command';
 
@@ -21,11 +21,26 @@ has 'stop' => (
 	documentation => "Stop the running containers"
 );
 
-has 'remove' => (
+has 'halt' => (
     traits        => [ "Getopt" ],
     isa           => 'Bool',
     is            => 'rw',
 	documentation => "Remove the containers"
+);
+
+has 'build' => (
+    traits        => [ "Getopt" ],
+    isa           => 'Bool',
+    is            => 'rw',
+	documentation => "Remove the containers"
+);
+
+has 'tag' => (
+    traits        => [ "Getopt" ],
+    isa           => 'ArrayRef[Str]',
+    is            => 'rw',
+	cmd_aliases   => 't',
+	documentation => "Tag"
 );
 
 has 'config_file' => (
@@ -33,9 +48,7 @@ has 'config_file' => (
     isa           => 'Str',
     is            => 'rw',
 	cmd_aliases   => 'c',
-	default       => sub {
-		return $ENV{DEVENV_CONFIG_FILE};
-	}
+	required      => 1,
 );
 
 has 'instance' => (
@@ -47,44 +60,37 @@ has 'instance' => (
 	default       => "dockit"
 );
 
-has 'force' => (
-    traits        => [ "Getopt" ],
-    isa           => 'Bool',
-    is            => 'rw',
-	cmd_aliases   => 'F',
-	documentation => "Force removal of all containers"
-);
-
-has 'command' => (
+has 'image' => (
     traits        => [ "Getopt" ],
     isa           => 'Str',
     is            => 'rw',
-	cmd_aliases   => 'cmd',
-	documentation => "Command to run"
+	documentation => "VM Image"
 );
 
-has 'start_until' => (
+has 'version' => (
     traits        => [ "Getopt" ],
     isa           => 'Str',
     is            => 'rw',
-	cmd_aliases   => 'until',
-	documentation => "Start containers until specififed containter"
+	documentation => "VM Image",
+	default       => "0"
 );
 
-has 'foreground' => (
+has 'type' => (
     traits        => [ "Getopt" ],
-    isa           => 'Bool',
+    isa           => 'Str',
     is            => 'rw',
-	cmd_aliases   => 'F',
-	documentation => "Start last container in the foreground"
+	documentation => "VM builder type",
+	default       => "Vagrant"
 );
 
-has 'tag' => (
+has 'vm_dir' => (
     traits        => [ "Getopt" ],
-    isa           => 'ArrayRef[Str]',
+    isa           => 'Str',
     is            => 'rw',
-	cmd_aliases   => 't',
-	documentation => "Tag"
+	documentation => "VM Directory",
+	default       => sub {
+		return sprintf( "%s/%s", $ENV{HOME}, ".devenv/vm" )
+	}
 );
 
 after 'execute' => sub {
@@ -93,7 +99,10 @@ after 'execute' => sub {
 	my $opts = shift;
 	my $args = shift;
 
-	my $docker = DevEnv::Docker->new(
+	my $vm = DevEnv::VM->new(
+		type          => $self->type,
+		vm_dir        => $self->vm_dir,
+
 		config_file   => $self->config_file,
 		instance_name => $self->instance,
 		verbose       => $self->verbose
@@ -101,24 +110,24 @@ after 'execute' => sub {
 
 	if ( $self->start ) {
 
-		$docker->start(
-			command     => $self->command,
-			start_until => $self->start_until,
-			foreground  => $self->foreground,
-			command     => $self->command,
-			tags        => $self->tag
+		$vm->start( 
+			image => $self->image,
+			tags  => $self->tag 
 		);
 	}
 	elsif ( $self->stop ) {
 
-		$docker->stop();
+		$vm->stop( tags => $self->tag );
 	}
-	elsif ( $self->remove ) {
+	elsif ( $self->halt ) {
 
-		$docker->remove( force => $self->force );
+		$vm->remove(   );
+	}
+	elsif ( $self->build ) {
+
+		$vm->build(   );
 	}
 	else {
-		die "No command, doing nothing :(";
 	}
 };
 

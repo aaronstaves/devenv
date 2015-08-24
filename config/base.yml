@@ -1,0 +1,43 @@
+---
+vm:
+  services:
+  -
+    name: SSH
+    service: ssh
+    port: 2222
+  - 
+    name: Web Server
+    service: http
+    port: 80
+  - 
+    name: PostgreSQL
+    service: postgresql
+    port: 5632
+  - 
+    name: RabbitMQ Management
+    service: http
+    port: 15672
+    tag: mq
+
+containers:
+  - 
+    name: data
+    type: data
+    image: 
+      name: data_perl
+    envs:
+      - name: PERL_VERSION
+        value: 5.18.0
+  -
+    name: work
+    type: work
+    image: 
+      name: work_debian_jessie
+    system:
+      network: 
+        type: bridge
+    links:
+      - data
+    envs:
+      - name: HI
+        value: Bacon

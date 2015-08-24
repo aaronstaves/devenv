@@ -1,0 +1,61 @@
+$script = <<SCRIPT
+
+	echo "PROVISION START"
+
+	apt-get install -yqq --force-yes docker
+	apt-get install -yqq --force-yes avahi-daemon
+	apt-get install -yqq --force-yes carton
+
+	# Remove the WM docker
+	apt-get remove -yqq --force-yes docker
+	# Install the docker we want
+	apt-get install -yqq --force-yes docker.io
+	ln -sf /usr/bin/docker.io /usr/bin/docker
+
+	usermod -a -G docker vagrant
+
+	service docker.io restart
+
+	mkdir -p "[% user_home_dir %]"
+
+	groupadd -g [% gid %] dev
+	useradd -l -d "[% user_home_dir %]" -s /bin/bash -g [% gid %] -u [% uid %] dev
+	echo "dev:dev" | chpasswd
+
+	[% FOREACH service IN services %]
+	mv "[% service.internal_temp_dir %]/services/[% service.name %]" /etc/avahi/services/
+	[% END %]
+
+	/etc/init.d/avahi-daemon restart
+
+	curl --silent -L https://cpanmin.us | perl - App::cpanminus
+
+	ls -al "[% service.internal_temp_dir %]"
+	
+	mkdir -p /opt
+	mv "[% service.internal_temp_dir %]/devenv" /opt
+	cd /opt/devenv; carton
+
+	echo "export DEVENV_CONFIG_FILE=[% config_file %]" >  /etc/default/devenv
+	echo "eval \\\$(/opt/devenv/bin/devenv init)"             >> /etc/default/devenv
+
+
+	echo ". /etc/default/devenv" >> /home/vagrant/.profile
+	
+	echo "PROVISION END"
+
+SCRIPT
+
+Vagrant.configure(2) do |config|
+
+	config.vm.box = "[% box_name or "noname" %]"
+
+	config.vm.box     = "phusion/ubuntu-14.04-amd64"
+    config.vm.provision "shell", inline: $script
+
+	config.vm.network "private_network", type: "dhcp"
+	config.vm.provider "virtualbox" do |v|
+		v.customize ["modifyvm", :id, "--nictype1", "virtio"]
+	end
+
+end
