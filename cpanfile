@@ -9,3 +9,4 @@ requires 'YAML::Tiny';
 requires 'Path::Class';
 requires 'Template';
 requires 'App::FatPacker';
+requires 'Hash::Merge';

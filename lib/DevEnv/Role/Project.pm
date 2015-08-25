@@ -6,22 +6,23 @@ use DevEnv::Config::Project;
 use Path::Class;
 use File::Spec;
 
-has 'config' => (
+has 'project_config' => (
     is      => 'ro',
     isa     => 'HashRef',
     lazy    => 1,
-    builder => '_build_config'
+    builder => '_build_project_config'
 );
-sub _build_config {
+sub _build_project_config {
 
     my $self = shift;
 
-    return DevEnv::Config::Project->initialize(
-        config_file => $self->config_file,
-    )->config;
+	my $project_config = DevEnv::Config::Project->instance;
+	$project_config->config_file( $self->project_config_file );
+
+	return $project_config->config;
 }
 
-has 'config_file' => (
+has 'project_config_file' => (
 	is       => 'rw',
 	isa      => 'Str'
 );

@@ -1,0 +1,11 @@
+---
+vm:
+  dir: .devenv
+  type: Vagrant
+  module:
+    Vagrant:
+      provider: virtualbox
+      server_url:
+docker:
+  registry:
+  -  http://localhost:5000

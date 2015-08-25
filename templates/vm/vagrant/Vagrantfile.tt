@@ -8,7 +8,6 @@ $script = <<SCRIPT
 	apt-get install -yqq --force-yes avahi-daemon
 	apt-get install -yqq --force-yes carton
 	apt-get install -yqq --force-yes docker.io
-#	ln -sf /usr/bin/docker.io /usr/bin/docker
 
 	usermod -a -G docker vagrant
 

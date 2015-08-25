@@ -30,11 +30,11 @@ sub _container_order {
 
 	my $scoreboard = undef;
 
-	foreach my $container_name ( keys %{$self->config->{containers}} ) {
+	foreach my $container_name ( keys %{$self->project_config->{containers}} ) {
 
 		$scoreboard->{ $container_name } //= 0;
 	
-		my $container_config = $self->config->{containers}{ $container_name };
+		my $container_config = $self->project_config->{containers}{ $container_name };
 
 		# Always start the data container first
 		if ( $container_config->{type} eq "data" ) {
@@ -72,7 +72,7 @@ sub _image_name {
 	my %args = @_;
 
 	my $container_name = $args{container_name};
-	my $config = $self->config->{containers}{ $container_name };
+	my $config = $self->project_config->{containers}{ $container_name };
 
 	return "devenv/" . sprintf( "%s_%s", $config->{type}, $config->{image}{name} );
 }
@@ -107,7 +107,7 @@ sub _env {
 		HOST_USER_GID  => $gid,
 	};
 
-	my $config = $self->config->{containers}{ $container_name };
+	my $config = $self->project_config->{containers}{ $container_name };
 
 	if ( defined $config->{envs} ) {
 		
@@ -161,7 +161,7 @@ sub start {
 
 		$self->debug( "Starting image $container_name" );
 
-		my $config = $self->config->{containers}{ $container_name };
+		my $config = $self->project_config->{containers}{ $container_name };
 
 		my $is_last_container = ( 
 			not scalar @container_order
@@ -224,7 +224,7 @@ sub start {
 		
 				foreach my $link ( @{$config->{links}} ) {
 
-					if ( $self->config->{ $link }{type} ne "data" ) {
+					if ( $self->project_config->{ $link }{type} ne "data" ) {
 						push @command, "--link";
 						push @command, $self->_instance_name( $link );
 					}
@@ -257,7 +257,7 @@ sub build {
 
 	my $container_name = $args{container_name};
 
-	my $config = $self->config->{containers}{ $container_name };
+	my $config = $self->project_config->{containers}{ $container_name };
 
 	my $makefile_dir = $self->image_dir->subdir( $config->{type}, $config->{image}{name} );
 

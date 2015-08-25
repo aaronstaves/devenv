@@ -19,7 +19,6 @@ ENV LC_ALL en_US.UTF-8
 
 
 RUN apt-get -yqq install vim
-RUN apt-get -yqq install avahi-daemon avahi-discover libnss-mdns
 RUN apt-get -qqy install net-tools
 RUN apt-get -qqy install uuid
 RUN apt-get -qqy install lsof

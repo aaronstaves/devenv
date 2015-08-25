@@ -5,22 +5,7 @@ extends 'DevEnv';
 with 'DevEnv::Role::Project';
 
 use Path::Class;
-use Moose::Util::TypeConstraints;
 use Template;
-
-subtype 'VM_Directory',
-	as "Path::Class::Dir";
-
-coerce 'VM_Directory',
-	from 'Str',
-	via { dir( $_ ) };
-
-has 'vm_dir' => (
-	is       => 'ro',
-	isa      => 'VM_Directory',
-	required => 1,
-	coerce   => 1
-);
 
 has 'temp_dir' => (
 	is      => 'ro',

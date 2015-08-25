@@ -71,26 +71,8 @@ has 'version' => (
     traits        => [ "Getopt" ],
     isa           => 'Str',
     is            => 'rw',
-	documentation => "VM Image",
+	documentation => "VM Version",
 	default       => "0"
-);
-
-has 'type' => (
-    traits        => [ "Getopt" ],
-    isa           => 'Str',
-    is            => 'rw',
-	documentation => "VM builder type",
-	default       => "Vagrant"
-);
-
-has 'vm_dir' => (
-    traits        => [ "Getopt" ],
-    isa           => 'Str',
-    is            => 'rw',
-	documentation => "VM Directory",
-	default       => sub {
-		return sprintf( "%s/%s", $ENV{HOME}, ".devenv/vm" )
-	}
 );
 
 after 'execute' => sub {
@@ -100,12 +82,9 @@ after 'execute' => sub {
 	my $args = shift;
 
 	my $vm = DevEnv::VM->new(
-		type          => $self->type,
-		vm_dir        => $self->vm_dir,
-
-		config_file   => $self->config_file,
-		instance_name => $self->instance,
-		verbose       => $self->verbose
+		project_config_file => $self->config_file,
+		instance_name       => $self->instance,
+		verbose             => $self->verbose
 	);
 
 	if ( $self->start ) {

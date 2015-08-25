@@ -5,7 +5,18 @@ use DevEnv;
 
 use YAML::Tiny;
 use Path::Class;
-use Data::Dumper;
+use Hash::Merge qw(merge);
+
+has 'devenv' => (
+	is      => 'ro',
+	isa     => 'DevEnv',
+	lazy    => 1,
+	builder => '_build_devenv'
+);
+sub _build_devenv {
+
+	return DevEnv->new;
+}
 
 has 'base_dir' => (
 	is       => 'ro',
@@ -16,8 +27,7 @@ has 'base_dir' => (
 sub _build_base_dir {
 
 	my $self = shift;
-
-	return DevEnv->new->base_dir;
+	return $self->devenv->base_dir;
 }
 
 has '_config_dirs' => (
@@ -41,7 +51,7 @@ sub _build_config_dirs {
 	}
 	else {
 		push @dirs, dir( $ENV{HOME}, ".devenv", "config" );
-		push @dirs, dir( $self->base_dir, "config" );
+		push @dirs, dir( $self->base_dir, "config"  );
 		push @dirs, dir( "opt", "devenv", "config" );
 	}
 
@@ -49,9 +59,8 @@ sub _build_config_dirs {
 }
 
 has 'config_file' => (
-	is       => 'ro',
+	is       => 'rw',
 	isa      => 'Str',
-	required => 1
 );
 
 has 'config' => (
@@ -65,33 +74,39 @@ sub _build_config {
 
 	my $self = shift;
 	
-	my $config = undef;
+	my $project_config = undef;
 
+	# Load the project config, override values
 	foreach my $config_dir ( $self->all_config_dirs ) {
 
-		my $config_file = $config_dir->file( $self->config_file )->stringify;
+		my $config_file = $config_dir->subdir( "project" )->file( $self->config_file )->stringify;
+	
+		$self->devenv->debug( "Checking for project config in $config_file" );
 
 		if ( -f $config_file ) {
 
 			my $yaml = YAML::Tiny->read( $config_file )->[0];
 
 			# Just copy the 'vm' section
-			$config->{vm} = $yaml->{vm};
+			$project_config->{vm} = $yaml->{vm};
 	
 			# Use the name a key to quick lookups
 			foreach my $container ( @{$yaml->{containers}} ) {
-				$config->{containers}{ $container->{name} } = $container;
+				$project_config->{containers}{ $container->{name} } = $container;
 			}
+
+			$self->devenv->debug( " * Found config" );
 
 			last;
 		}
 	}
 
-	if ( not defined $config ) {
-		die "Cannot find the config file";
+	if ( not defined $project_config ) {
+		die "Cannot find the project config file";
 	}
 
-	return $config;
+	# Merge to the two configs
+	return merge( $self->devenv->main_config, $project_config );
 }
 
 1;

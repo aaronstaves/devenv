@@ -96,9 +96,9 @@ after 'execute' => sub {
 	my $args = shift;
 
 	my $docker = DevEnv::Docker->new(
-		config_file   => $self->config_file,
-		instance_name => $self->instance,
-		verbose       => $self->verbose
+		project_config_file => $self->config_file,
+		instance_name       => $self->instance,
+		verbose             => $self->verbose
 	);
 
 	if ( $self->start ) {

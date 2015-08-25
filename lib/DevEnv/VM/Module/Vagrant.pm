@@ -53,7 +53,15 @@ has 'instance_dir' => (
 sub _build_instance_dir {
 
 	my $self = shift;
-	return dir( sprintf ( "%s/%s", $self->vm_dir, $self->instance_name ) );
+
+	# This is where to build the VMs
+	my $vm_dir = $self->project_config->{vm}{dir};
+
+	if ( $vm_dir !~ m/^\// ) {
+		$vm_dir = sprintf( "%s/%s", $ENV{HOME}, $vm_dir );
+	}
+
+	return dir( $vm_dir, "vm", $self->instance_name );
 }
 
 has 'external_temp_dir' => (
@@ -80,19 +88,57 @@ sub _build_internal_temp_dir {
 	return $self->vagrant_share_dir->subdir( $self->outside_home, $self->temp_dir_name );
 }
 
+has 'vargant_params' => (
+	is      => 'ro',
+	isa     => 'Str',
+	lazy    => 1,
+	builder => "_build_params"
+);
+
+sub _build_params {
+
+	my $self = shift;
+
+	my @params = ();
+
+	if ( 
+		defined $self->main_config->{vm}{module}{Vagrant}{provider}
+	and 
+		$self->main_config->{vm}{module}{Vagrant}{provider} ne ""
+	and
+		$self->main_config->{vm}{module}{Vagrant}{provider} ne "virtualbox" 
+	) {
+		push @params, "VAGRANT_DEFAULT_PROVIDER=" . $self->main_config->{vm}{module}{Vagrant}{provider};
+	}
+
+	return join ( " ", @params );
+}
+
 override 'start' => sub { 
 
 	my $self = shift;
 
-	$self->debug( "Starting Vagrant box" );
+	$self->debug( "Starting Vagrant VM" );
 
 	if ( ! -d $self->instance_dir ) {
 		$self->build();
 	}
 
+	system sprintf( "cd %s; %s %s up", $self->instance_dir, $self->vargant_params, $self->vagrant );
+
+	return undef;
 };
 
-sub stop  { }
+override 'stop' => sub { 
+
+	my $self = shift;
+
+	$self->debug( "Stopping Vagrant VM" );
+
+	system sprintf( "cd %s; %s %s halt", $self->instance_dir, $self->vargant_params, $self->vagrant );
+
+	return undef;
+};
 
 override 'remove' => sub { 
 
@@ -100,7 +146,7 @@ override 'remove' => sub {
 
 	$self->debug( "Removing Vagrant box" );
 
-	system sprintf( "cd %s; %s destroy -f", $self->instance_dir, $self->vagrant );
+	system sprintf( "cd %s; %s %s destroy -f", $self->instance_dir, $self->vargant_params, $self->vagrant );
 
 	remove_tree $self->instance_dir->stringify;
 
@@ -149,12 +195,12 @@ override 'build' => sub {
 		gid               => 5000,
 		box_name          => $self->instance_name,
 		user_home_dir     => $self->vagrant_share_dir->subdir( $self->outside_home )->stringify,
-		config_file       => $self->config_file,
+		config_file       => $self->project_config_file,
 		internal_temp_dir => $self->internal_temp_dir->stringify,
 		services          => [],
 	};
 
-	if ( defined $self->config->{vm}{services} ) {
+	if ( defined $self->project_config->{vm}{services} ) {
 
 		my $service_dir = $self->external_temp_dir->subdir( "services" )->stringify;
 
@@ -162,7 +208,7 @@ override 'build' => sub {
 
 		make_path $service_dir or die "Cannot make the service temp dir $service_dir: $!";
 
-		my @services = @{$self->config->{vm}{services}};
+		my @services = @{$self->project_config->{vm}{services}};
 		push @services, {
 			name    => "VM",
 			service => "device-info",
@@ -210,10 +256,10 @@ override 'build' => sub {
 	print $fh $vagrantfile_text;
 	close $fh;
 
-	system sprintf( "cd %s; %s up", $self->instance_dir, $self->vagrant );
+	system sprintf( "cd %s; %s %s up", $self->instance_dir, $self->vargant_params, $self->vagrant );
 
-	system sprintf( "cd %s; %s ssh", $self->instance_dir, $self->vagrant );
-	#system sprintf( "cd %s; %s ssh -c 'devenv docker --start'", $self->instance_dir, $self->vagrant );
+	system sprintf( "cd %s; %s %s ssh", $self->instance_dir, $self->vargant_params, $self->vagrant );
+	#system sprintf( "cd %s; %s  %s ssh -c 'devenv docker --start'", $self->instance_dir, $$self->vargant_params, $self->vagrant );
 
 	return undef;
 };

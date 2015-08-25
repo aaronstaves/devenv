@@ -1,6 +1,9 @@
 package DevEnv::VM;
 use Moose;
 
+extends 'DevEnv';
+with 'DevEnv::Role::Project';
+
 use Module::Loaded;
 
 has '_vm' => (
@@ -21,11 +24,7 @@ sub BUILD {
 	my $self = shift;
 	my $args = shift;
 
-	if ( not defined $args->{type} ) {
-		die "VM type was not defined";
-	}
-
-	my $class = __PACKAGE__ . "::Module::" . $args->{type};
+	my $class = __PACKAGE__ . "::Module::" . $self->project_config->{vm}{type};
 
 	if ( $args->{verbose} ) {
 		print STDERR "Using class $class for VM\n";
