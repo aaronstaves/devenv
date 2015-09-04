@@ -7,6 +7,7 @@ with 'DevEnv::Role::Project';
 use DevEnv::Docker::Control;
 
 use Path::Class;
+use Data::Dumper;
 
 has 'control' => (
 	is       => 'ro',
@@ -24,27 +25,67 @@ has 'image_dir' => (
 );
 sub _build_image_dir { return shift->base_dir->subdir( "images" ) }
 
+has 'port_offset' => (
+	is      => 'ro',
+	isa     => 'Int',
+	lazy     => 1,
+	builder  => '_build_port_offset'
+);
+sub _build_port_offset {
+
+	my $self = shift;
+	return $self->project_config->{general}{port_offset} // 0;
+}
+
+
 sub _container_order {
 
 	my $self = shift;
+	my %args = @_;
 
 	my $scoreboard = undef;
 
 	foreach my $container_name ( keys %{$self->project_config->{containers}} ) {
 
-		$scoreboard->{ $container_name } //= 0;
-	
 		my $container_config = $self->project_config->{containers}{ $container_name };
+
+		# Check if we should enable this container
+		if ( grep { $container_name eq $_ } @{$args{containers}} ) {
+			$container_config->{enabled} = 1;
+		}
 
 		# Always start the data container first
 		if ( $container_config->{type} eq "data" ) {
+
 			$scoreboard->{ $container_name } += 1_000_000;
+
+			# data containers are always enabled
+			$container_config->{enabled} = 1;
 		}
+	
+		# If the we want it in the foreground, make sure the work container goes last
+		if ( $container_config->{type} eq "work" ) {
+
+			if ( $args{foreground} ) {
+				$scoreboard->{ $container_name } -= 1_000_000;
+			}
+
+			# work containers are always enabled
+			$container_config->{enabled} = 1;
+		}
+
+		next if ( not $container_config->{enabled} );
+
+		$scoreboard->{ $container_name } //= 0;
 
 		# Increase the score of the container that is link required for this one
 		if ( defined $container_config->{link} and ref $container_config->{link} eq "ARRAY" ) {
 			foreach my $link ( @{$container_config->{link}} ) {
+
 				$scoreboard->{ $link }++;
+	
+				# Make sure the contrainer is enabled since we are linking to it
+				$self->project_config->{containers}{ $link }{enabled} = 1;
 			}
 		}
 	}
@@ -74,7 +115,7 @@ sub _image_name {
 	my $container_name = $args{container_name};
 	my $config = $self->project_config->{containers}{ $container_name };
 
-	return "devenv/" . sprintf( "%s_%s", $config->{type}, $config->{image}{name} );
+	return "devenv/" . sprintf( "%s_%s", $config->{type}, $config->{image} );
 }
 
 sub _image_name_version {
@@ -101,10 +142,9 @@ sub _env {
 	my ( $gid ) = split /\s/, $(;
 
 	my $env_hashref = {
-		HOST_USER_HOME => $ENV{HOME},
-		HOST_USER_NAME => $ENV{USER},
-		HOST_USER_UID  => $<,
-		HOST_USER_GID  => $gid,
+		DEVENV_MY_UID  => $self->user_id,
+		DEVENV_MY_GID  => $self->group_id,
+		DEVENV_MY_HOME => $self->home_dir,
 	};
 
 	my $config = $self->project_config->{containers}{ $container_name };
@@ -126,7 +166,6 @@ sub _env_string {
 
 	my $container_name = $args{container_name};
 
-
 	my $env_hashref = $self->_env( container_name => $container_name );
 
 	my @envs = ();
@@ -146,6 +185,7 @@ sub start {
 	my $self = shift;
 	my %args = @_;
 
+	my $tags = $args{tags};
 	if ( $args{foreground} and not defined $args{command} ) {
 		$args{command} = "/bin/bash";
 	}
@@ -154,15 +194,22 @@ sub start {
 	my $ps     = $self->control->ps;
 	my $images = $self->control->images;
 	
-	my @container_order = $self->_container_order();
+	my @container_order = $self->_container_order(
+		containers => $args{containers},
+		foreground => $args{foreground}
+	);
+
+	$self->debug( "Containter Order = " . join ( ", ", @container_order ) );
 
 	# Get the order that the containers should be started
 	while ( my $container_name = shift @container_order ) {
 
-		$self->debug( "Starting image $container_name" );
-
 		my $config = $self->project_config->{containers}{ $container_name };
 
+		next if ( not $config->{enabled} );
+
+		$self->debug( "Starting image $container_name" );
+		
 		my $is_last_container = ( 
 			not scalar @container_order
 		or 
@@ -224,13 +271,21 @@ sub start {
 		
 				foreach my $link ( @{$config->{links}} ) {
 
-					if ( $self->project_config->{ $link }{type} ne "data" ) {
+					if ( $self->project_config->{containers}{ $link }{type} ne "data" ) {
 						push @command, "--link";
-						push @command, $self->_instance_name( $link );
+						push @command, sprintf( "%s:%s", $self->_instance_name( $link ), $self->_instance_name( $link ) );
 					}
 
 					push @command, "--volumes-from";
 					push @command, $self->_instance_name( $link );
+				}
+			}
+
+			if ( defined $config->{services} ) {
+
+				foreach my $service ( @{$config->{services}} ) {
+					push @command, "-p";
+					push @command, sprintf( "%s:%s", $service->{src_port} + $self->port_offset, $service->{dst_port} );
 				}
 			}
 
@@ -239,7 +294,7 @@ sub start {
 				push @command, $env;
 			}
 
-			push @command, $images->{ $self->_image_name( container_name => $container_name ) }{image_id};
+			push @command, $self->_image_name( container_name => $container_name );
 
 			if ( defined $args{command} ) {
 				push @command, $args{command};
@@ -259,7 +314,7 @@ sub build {
 
 	my $config = $self->project_config->{containers}{ $container_name };
 
-	my $makefile_dir = $self->image_dir->subdir( $config->{type}, $config->{image}{name} );
+	my $makefile_dir = $self->image_dir->subdir( $config->{type}, $config->{image} );
 
 	$self->debug( "Build image with Makefile at $makefile_dir" );
 

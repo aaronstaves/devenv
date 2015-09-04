@@ -1,9 +1,10 @@
 package DevEnv::Docker::Control;
 use Moose;
 
+extends 'DevEnv';
+
 use IPC::Run;
 use File::Which;
-use Data::Dumper;
 
 has '_docker_file_name' => (
 	traits  => ['Array'],
@@ -171,8 +172,11 @@ sub command {
 		@{$command}
 	);
 
+	my $cmd = join ( " ", @cmd );
 
-	system join ( " ", @cmd );
+	$self->debug( "Docker Cmd = $cmd" );
+
+	system $cmd;
 
 #	my ( $stdout, $stderr );
 #	IPC::Run::run

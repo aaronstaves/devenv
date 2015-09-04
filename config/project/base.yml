@@ -1,43 +1,77 @@
 ---
-vm:
-  services:
-  -
-    name: SSH
-    service: ssh
-    port: 2222
-  - 
-    name: Web Server
-    service: http
-    port: 80
-  - 
-    name: PostgreSQL
-    service: postgresql
-    port: 5632
-  - 
-    name: RabbitMQ Management
-    service: http
-    port: 15672
-    tag: mq
-
 containers:
-  - 
-    name: data
+  data:
     type: data
-    image: 
-      name: perl
-    envs:
-      - name: PERL_VERSION
-        value: 5.18.0
-  -
-    name: work
+    description: Persistent Data
+    image: perl
+    enabled: 1
+  work:
     type: work
-    image: 
-      name: debian_jessie
-    system:
-      network: 
-        type: bridge
+    description: Work Environment
+    image: debian_jessie
     links:
       - data
+    services:
+      - name: SSH
+        type: ssh
+        src_port: 22222
+        dst_port: 22
+      - name: Catalyst
+        type: http
+        src_port: 3000
+        dst_port: 3000
     envs:
-      - name: HI
-        value: Bacon
+      - name: PLENV_ROOT
+        value: /data/plenv
+      - name: PERL_VERSION
+        value: 5.18.0
+    enabled: 1
+  pg9_4:
+    type: db
+    description: PostgreSQL 9.4
+    image: pg9_4
+    links:
+      - data
+    services:
+      - name: PostgreSQL
+        type: postgres
+        src_port: 5432
+        dst_port: 5432
+    enabled: 1
+  mq:
+    type: mq
+    description: RabbitMQ
+    image: rabbitmq
+    links:
+      - data
+    services:
+      - name: Rabbit MQ
+        type: http
+        src_port: 15672
+        dst_port: 15672
+  samba:
+    type: fs
+    description: Samba Access
+    image: samba
+    tags:
+      - samba
+    links:
+      - data
+    services:
+      - name: Samba AD
+        type: smb
+        src_port: 445
+        dst_port: 445
+      - name: Samba FS
+        src_port: 445
+        dst_port: 445/udp
+      - name: Samba NetBIOS
+        type: smb
+        src_port: 139
+        dst_port: 139
+      - name: Samba WINS
+        src_port: 137
+        dst_port: 137/udp
+      - name: Samba DG
+        src_port: 138
+        dst_port: 138/udp

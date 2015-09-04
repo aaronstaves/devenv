@@ -58,6 +58,35 @@ sub _build_config_dirs {
 	return \@dirs;
 }
 
+has 'instance_name' => (
+	is  => 'rw',
+	isa => 'Str'
+);
+
+has 'instance_dir' => (
+	is      => 'ro',
+	isa     => 'Path::Class::Dir',
+	lazy    => 1,
+	builder => '_build_instance_dir'
+);
+sub _build_instance_dir {
+
+	my $self = shift;
+
+    my $vm_dir = $self->devenv->main_config->{vm}{dir};
+
+	if ( not defined $vm_dir ) {
+		die "The VM directory has not been defined! Where are we going to store all our VMs :(";
+	}
+
+	# TODO: We repeat this in the project role, might be good refector'd someplace
+    if ( $vm_dir !~ m/^\// ) {
+        $vm_dir = sprintf( "%s/%s", $ENV{HOME}, $vm_dir );
+    }
+
+	return dir( $vm_dir, "vm", $self->instance_name );
+}
+
 has 'config_file' => (
 	is       => 'rw',
 	isa      => 'Str',
@@ -73,40 +102,67 @@ has 'config' => (
 sub _build_config {
 
 	my $self = shift;
+
+	my $main_config = $self->devenv->main_config;
 	
-	my $project_config = undef;
+	my $project_config = {};
 
-	# Load the project config, override values
-	foreach my $config_dir ( $self->all_config_dirs ) {
+	# If the project config has not been set, then pray that one exists in the instance :)
+	if ( defined $self->config_file and $self->config_file ne "" ) {
 
-		my $config_file = $config_dir->subdir( "project" )->file( $self->config_file )->stringify;
-	
-		$self->devenv->debug( "Checking for project config in $config_file" );
+		# Load the project config, override values
+		foreach my $config_dir ( $self->all_config_dirs ) {
 
-		if ( -f $config_file ) {
+			my $config_file = $config_dir->subdir( "project" )->file( $self->config_file )->stringify;
+		
+			$self->devenv->debug( "Checking for project config in $config_file" );
 
-			my $yaml = YAML::Tiny->read( $config_file )->[0];
+			if ( -f $config_file ) {
 
-			# Just copy the 'vm' section
-			$project_config->{vm} = $yaml->{vm};
-	
-			# Use the name a key to quick lookups
-			foreach my $container ( @{$yaml->{containers}} ) {
-				$project_config->{containers}{ $container->{name} } = $container;
+				$project_config = YAML::Tiny->read( $config_file )->[0];
+				delete $project_config->{vm}{dir};
+				$self->devenv->debug( " * Found config" );
+				last;
 			}
-
-			$self->devenv->debug( " * Found config" );
-
-			last;
 		}
 	}
 
-	if ( not defined $project_config ) {
-		die "Cannot find the project config file";
+	# Load the config from instance. This will be what the instance was created with. Load
+	# last. 
+	my $instance_config_file = $self->instance_dir->file( "config.yml" )->stringify;
+	my $instance_config = {};
+
+	if ( -f $instance_config_file ) {
+
+		$self->devenv->debug( "Found instance config" );
+
+		$instance_config = YAML::Tiny->read( $instance_config_file )->[0];
 	}
 
-	# Merge to the two configs
-	return merge( $self->devenv->main_config, $project_config );
+	# Finalize the config
+
+	my $final_config = merge( 
+		merge( $main_config, $project_config ),
+		$instance_config
+	);
+
+	if ( not defined $final_config->{containers} ) {
+		die "Cannot find any containers in config file, or no config file specified.";
+	}
+
+	return $final_config;
+}
+
+sub instance_config_write {
+
+	my $self = shift;
+	my %args = @_;
+
+	my $yaml = YAML::Tiny->new( $self->config );
+
+    $yaml->write( $self->instance_dir->file( "config.yml" )->stringify );
+
+	return undef;
 }
 
 1;

@@ -11,14 +11,13 @@ RUN mkdir -p /data/home
 RUN mkdir -p /data/work
 
 COPY files/ /tmp/
-RUN tar -zxf /tmp/plenv.tgz -C /data/plenv
+RUN tar -zxf /tmp/plenv.tgz -C /data
 RUN tar -zxf /tmp/perl-build.tgz -C /data/plenv/plugins
 
 RUN rm /tmp/plenv.tgz
 RUN rm /tmp/perl-build.tgz
 
-ADD tmp/myid /tmp/myid
-ADD tmp/mygroup /tmp/mygroup
-RUN chown -R $(cat /tmp/myid):$(cat /tmp/mygroup) /data
-
 VOLUME [ "/data", "/var/log" ]
+
+ADD scripts/startup.sh /usr/local/bin/startup.sh
+CMD /usr/local/bin/startup.sh

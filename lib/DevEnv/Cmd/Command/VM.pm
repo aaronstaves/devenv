@@ -35,12 +35,13 @@ has 'build' => (
 	documentation => "Build the VM"
 );
 
-has 'tag' => (
+has 'instance' => (
     traits        => [ "Getopt" ],
-    isa           => 'ArrayRef[Str]',
+    isa           => 'Str',
     is            => 'rw',
-	cmd_aliases   => 't',
-	documentation => "Tag"
+	cmd_aliases   => 'i',
+	documentation => "Give the instance a different name",
+	required      => 1
 );
 
 has 'config_file' => (
@@ -48,23 +49,14 @@ has 'config_file' => (
     isa           => 'Str',
     is            => 'rw',
 	cmd_aliases   => 'c',
-	required      => 1,
 );
 
-has 'instance' => (
+has 'tag' => (
     traits        => [ "Getopt" ],
-    isa           => 'Str',
+    isa           => 'ArrayRef[Str]',
     is            => 'rw',
-	cmd_aliases   => 'i',
-	documentation => "Give the instance a different name",
-	default       => "dockit"
-);
-
-has 'image' => (
-    traits        => [ "Getopt" ],
-    isa           => 'Str',
-    is            => 'rw',
-	documentation => "VM Image"
+	cmd_aliases   => 't',
+	documentation => "Tag"
 );
 
 has 'version' => (
@@ -89,8 +81,11 @@ after 'execute' => sub {
 
 	if ( $self->start ) {
 
+		if ( not defined $self->config_file or $self->config_file eq "" ) {
+			die "A config file is required to start a VM.";
+		}
+
 		$vm->start( 
-			image => $self->image,
 			tags  => $self->tag 
 		);
 	}
@@ -103,6 +98,10 @@ after 'execute' => sub {
 		$vm->remove(   );
 	}
 	elsif ( $self->build ) {
+
+		if ( not defined $self->config_file or $self->config_file eq "" ) {
+			die "A config file is required to build a VM.";
+		}
 
 		$vm->build(   );
 	}

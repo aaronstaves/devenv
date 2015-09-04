@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 
-
 /usr/local/bin/default_env.sh
-
 
 export PLENV_ROOT=/data/plenv
 
-groupadd -g $(cat /tmp/mygroup) dev
-useradd -l -d /data/home/dev -s /bin/bash -m -g $(cat /tmp/mygroup) -u $(cat /tmp/myid) dev
+groupadd -g $DEVENV_MY_GID dev
+useradd -l -d /data/home/dev -s /bin/bash -m -g $DEVENV_MY_GID -u $DEVENV_MY_UID dev
 echo "dev:dev" | chpasswd
 
 if [ ! -f "/data/home/dev/.bashrc" ]; then

@@ -81,12 +81,37 @@ has 'foreground' => (
 	documentation => "Start last container in the foreground"
 );
 
-has 'tag' => (
+has 'container' => (
     traits        => [ "Getopt" ],
     isa           => 'ArrayRef[Str]',
     is            => 'rw',
-	cmd_aliases   => 't',
+	cmd_aliases   => 'C',
 	documentation => "Tag"
+);
+
+has 'port_offset' => (
+    traits        => [ "Getopt" ],
+    isa           => 'Int',
+    is            => 'rw',
+	cmd_aliases   => 'o',
+	documentation => "Source port offset, default 0",
+	default       => sub {
+		return $ENV{DEVENV_PORT_OFFSET} // 0
+	}
+);
+
+has 'match_user' => (
+	traits        => [ "Getopt" ],
+	isa           => 'Bool',
+	is            => 'rw',
+	documentation => "Match user/group id of current user"
+);
+
+has 'use_home' => (
+	traits        => [ "Getopt" ],
+	isa           => 'Bool',
+	is            => 'rw',
+	documentation => "r"
 );
 
 after 'execute' => sub {
@@ -95,11 +120,28 @@ after 'execute' => sub {
 	my $opts = shift;
 	my $args = shift;
 
-	my $docker = DevEnv::Docker->new(
+	my %params = (
 		project_config_file => $self->config_file,
 		instance_name       => $self->instance,
+		port_offset         => $self->port_offset,
 		verbose             => $self->verbose
 	);
+	if ( $self->match_user ) {
+		$params{user_id}  = $<;
+		$params{group_id} = $);
+	}
+	if ( $self->use_home ) {
+
+		if ( not $ENV{DEVENV_VAGRANT} ) {
+
+			$params{home_dir} = $ENV{HOME};
+		}
+		else {
+			print STDERR "NOTE: Using a VM, cannot use the HOME directory of the current user\n";
+		}
+	}
+
+	my $docker = DevEnv::Docker->new( %params );
 
 	if ( $self->start ) {
 
@@ -108,7 +150,7 @@ after 'execute' => sub {
 			start_until => $self->start_until,
 			foreground  => $self->foreground,
 			command     => $self->command,
-			tags        => $self->tag
+			containers  => $self->container
 		);
 	}
 	elsif ( $self->stop ) {

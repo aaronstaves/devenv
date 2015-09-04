@@ -62,9 +62,8 @@ RUN apt-get -yqq install openssh-server
 RUN mkdir /var/run/sshd
 
 EXPOSE 22
+EXPOSE 3000
 
-ADD tmp/myid           /tmp/myid
-ADD tmp/mygroup        /tmp/mygroup
 ADD tmp/default_env.sh /usr/local/bin/default_env.sh
 ADD tmp/template.sh    /usr/local/bin/template.sh
 

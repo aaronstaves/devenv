@@ -4,14 +4,15 @@ use Moose;
 extends 'DevEnv::VM::Module';
 
 use DevEnv::Docker;
+use DevEnv::Config::Project;
 
 use IPC::Run;
 use Path::Class;
 use File::Which;
+use File::Copy;
 use File::Path qw/make_path remove_tree/;
 use File::Copy::Recursive qw/fcopy rcopy dircopy fmove rmove dirmove/;
 use Template;
-use Data::Dumper;
 
 has 'vagrant_file_name' => (
 	is      => 'ro',
@@ -43,26 +44,6 @@ has 'vagrant_share_dir' => (
 		return dir( "/vagrant" );
 	}
 );
-
-has 'instance_dir' => (
-	is      => 'ro',
-	isa     => 'Path::Class::Dir',
-	lazy    => 1,
-	builder => '_build_instance_dir'
-);
-sub _build_instance_dir {
-
-	my $self = shift;
-
-	# This is where to build the VMs
-	my $vm_dir = $self->project_config->{vm}{dir};
-
-	if ( $vm_dir !~ m/^\// ) {
-		$vm_dir = sprintf( "%s/%s", $ENV{HOME}, $vm_dir );
-	}
-
-	return dir( $vm_dir, "vm", $self->instance_name );
-}
 
 has 'external_temp_dir' => (
 	is      => 'ro',
@@ -168,8 +149,13 @@ sub _copy_devenv_to_vagrant {
 	remove_tree $self->external_temp_dir->subdir( "devenv", ".git" )->stringify;
 	remove_tree $self->external_temp_dir->subdir( "devenv", "local" )->stringify;
 
+	# We are going to use the config created for the instance. Remove the old config directory
+	# and copy the instance config.
+	remove_tree $self->external_temp_dir->subdir( "devenv", "config", "project" )->stringify;
+	make_path $self->external_temp_dir->subdir( "devenv", "config", "project" )->stringify;
+	copy $self->instance_dir->file( "config.yml" ), $self->external_temp_dir->subdir( "devenv", "config", "project" )->file( "config.yml" );
+
 #	TODO: Only copy over required config and images
-#	remove_tree $self->external_temp_dir->subdir( "devenv", "config" )->stringify;
 #	remove_tree $self->external_temp_dir->subdir( "devenv", "images" )->stringify;
 
 # 	TODO: Also check .devenv for custom configs
@@ -190,9 +176,12 @@ override 'build' => sub {
 	
 	make_path $self->external_temp_dir->stringify;
 
+	# Make a copy of the config file in the instance dir
+	DevEnv::Config::Project->instance->instance_config_write();
+
 	my $vars = {
-		uid               => $<,
-		gid               => 5000,
+		uid               => $self->user_id,
+		gid               => $self->group_id,
 		box_name          => $self->instance_name,
 		user_home_dir     => $self->vagrant_share_dir->subdir( $self->outside_home )->stringify,
 		config_file       => $self->project_config_file,
@@ -200,41 +189,25 @@ override 'build' => sub {
 		services          => [],
 	};
 
-	if ( defined $self->project_config->{vm}{services} ) {
+	my $service_dir = $self->external_temp_dir->subdir( "services" )->stringify;
 
-		my $service_dir = $self->external_temp_dir->subdir( "services" )->stringify;
+	$self->debug( "Make service temp dir at $service_dir" );
 
-		$self->debug( "Make service temp dir at $service_dir" );
+	make_path $service_dir or die "Cannot make the service temp dir $service_dir: $!";
 
-		make_path $service_dir or die "Cannot make the service temp dir $service_dir: $!";
+	foreach my $avahi_service ( $self->get_avahi_service_files() ) {
 
-		my @services = @{$self->project_config->{vm}{services}};
-		push @services, {
-			name    => "VM",
-			service => "device-info",
-			port    => 0,
-		};
+		my $file = sprintf( "%s/%s", $service_dir, $avahi_service->{name} );
 
-		foreach my $service ( @services ) {
+		$self->debug( "Writing service $file" );
 
-			my $name = lc $service->{name};
-			$name =~ s/[^\w]/_/g;
-			$name .= ".service";
+		open my $fh, ">", $file or die "Cannot write $file: $!";
+		print $fh $avahi_service->{file};
+		close $fh;
 
-			my $file = sprintf( "%s/%s", $service_dir, $name );
-
-			$self->debug( "Writing service $file" );
-
-			open my $fh, ">", $file or die "Cannot write $file: $!";
-			print $fh $self->avahi_service(
-				%{$service}
-			);
-			close $fh;
-
-			push @{$vars->{services}}, {
-				name              => $name,
-				internal_temp_dir => $self->internal_temp_dir->stringify
-			}
+		push @{$vars->{services}}, {
+			name              => $avahi_service->{name},
+			internal_temp_dir => $self->internal_temp_dir->stringify
 		}
 	}
 
@@ -258,8 +231,16 @@ override 'build' => sub {
 
 	system sprintf( "cd %s; %s %s up", $self->instance_dir, $self->vargant_params, $self->vagrant );
 
-	system sprintf( "cd %s; %s %s ssh", $self->instance_dir, $self->vargant_params, $self->vagrant );
-	#system sprintf( "cd %s; %s  %s ssh -c 'devenv docker --start'", $self->instance_dir, $$self->vargant_params, $self->vagrant );
+	my $cmd = sprintf( "cd %s; %s  %s ssh -c 'devenv docker --start %s'",
+		$self->instance_dir,
+		$self->vargant_params,
+		$self->vagrant,
+		$self->verbose?"-v":""
+	);
+
+	$self->debug( "Vagrant Provision = $cmd" );
+
+	system $cmd;
 
 	return undef;
 };

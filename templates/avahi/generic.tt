@@ -3,7 +3,7 @@
 <service-group>
 	<name replace-wildcards="yes">[% box_name %] [% name %]</name>  
 	<service>
-		<type>_[% service %]._[% protocal or "tcp" %]</type>
+		<type>_[% type %]._[% protocal or "tcp" %]</type>
 		<port>[% port %]</port>
 		[% FOREACH text IN records %]
 		<txt-record>[% text %]</txt-record>
