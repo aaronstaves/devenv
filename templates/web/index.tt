@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8"></meta>
+		<title>[% instance_name %] Control Panel</title>
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
+		<script type='text/javascript'>
+
+			function set_status( status ) {
+			}
+
+			function _add_container_info( container ) {
+
+				$("#containers").append(
+				);
+			}
+
+			function render_containers( containers ) {
+
+				$("#containers").empty();
+
+				for ( var index = 0; index < containers.length; index++ ) {
+
+					_add_container_info( containers[ index ] );
+				}
+			}
+
+			function get_containers {
+				
+				$.ajax(
+					{
+						url: "http://localhost:6000/action_status",
+					}
+				).done(
+					function( containers ) {
+						render_containers( containers );
+					}
+				)
+			}
+
+			$(document).ready(
+
+				function() {
+
+					$("#b_start").click(
+						function() {
+						}
+					);
+
+					$("#b_stop").click(
+						function() {
+						}
+					);
+
+					$("#b_refresh").click(
+						function() {
+						}
+					);
+
+					$("#b_remove").click(
+						function() {
+						}
+					);
+
+					get_containers();
+				}
+			);
+
+		</script>
+	</head>
+	<body>
+		<div>
+			<button id='b_start'>Start</button>
+			<button id='b_stop'>Stop</button>
+			<button id='b_refresh'>Refresh</button>
+			<button id='b_remove'>Remove</button>
+		</div>
+		<div id='status'></div>
+		<div id='containers'></div>
+	</body>
+</html>
