@@ -12,3 +12,8 @@ requires 'Template';
 requires 'App::FatPacker';
 requires 'Hash::Merge';
 requires 'HTTP::Server::Simple';
+requires 'Exception::Class';
+requires 'Try::Tiny';
+requires 'Module::Find';
+requires 'File::Copy::Recursive';
+requires 'JSON::XS';

@@ -40,4 +40,5 @@ EXPOSE 5432
 VOLUME [ "/var/log/db/postgresql/9.4", "/data/etc/db/postgresql/9.4" ]
 
 ADD scripts/startup.sh /usr/local/bin/startup.sh
+RUN chmod 755 /usr/local/bin/startup.sh
 CMD /usr/local/bin/startup.sh

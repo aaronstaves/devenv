@@ -1,8 +1,6 @@
 ---
 general:
-  user_id: 5000
-  group_id: 5000
-  home_dir: /home/dev
+  home_dir: /Users/jwalstra/Work/Home
 vm:
   dir: .devenv
   type: Vagrant
@@ -10,6 +8,8 @@ vm:
     Vagrant:
       provider: virtualbox
       server_url:
+web:
+  port: 6000
 docker:
   registry:
-  -  http://localhost:5000
+  - localhost:5000

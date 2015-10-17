@@ -4,6 +4,7 @@ use Moose;
 extends 'DevEnv';
 with 'DevEnv::Role::Project';
 
+use DevEnv::Exceptions;
 use DevEnv::Docker::Control;
 
 use Path::Class;
@@ -15,7 +16,15 @@ has 'control' => (
 	lazy     => 1,
 	builder  => '_build_control'
 );
-sub _build_control { return DevEnv::Docker::Control->new() }
+sub _build_control {
+
+	my $self = shift;
+
+	return DevEnv::Docker::Control->new(
+		instance_name => $self->instance_name,
+		verbose       => $self->verbose
+	);
+}
 
 has 'image_dir' => (
 	is       => 'ro',
@@ -37,7 +46,6 @@ sub _build_port_offset {
 	return $self->project_config->{general}{port_offset} // 0;
 }
 
-
 sub _container_order {
 
 	my $self = shift;
@@ -49,18 +57,12 @@ sub _container_order {
 
 		my $container_config = $self->project_config->{containers}{ $container_name };
 
-		# Check if we should enable this container
-		if ( grep { $container_name eq $_ } @{$args{containers}} ) {
-			$container_config->{enabled} = 1;
-		}
+		next if ( not $container_config->{enabled} );
 
 		# Always start the data container first
 		if ( $container_config->{type} eq "data" ) {
 
 			$scoreboard->{ $container_name } += 1_000_000;
-
-			# data containers are always enabled
-			$container_config->{enabled} = 1;
 		}
 	
 		# If the we want it in the foreground, make sure the work container goes last
@@ -69,12 +71,7 @@ sub _container_order {
 			if ( $args{foreground} ) {
 				$scoreboard->{ $container_name } -= 1_000_000;
 			}
-
-			# work containers are always enabled
-			$container_config->{enabled} = 1;
 		}
-
-		next if ( not $container_config->{enabled} );
 
 		$scoreboard->{ $container_name } //= 0;
 
@@ -185,7 +182,6 @@ sub start {
 	my $self = shift;
 	my %args = @_;
 
-	my $tags = $args{tags};
 	if ( $args{foreground} and not defined $args{command} ) {
 		$args{command} = "/bin/bash";
 	}
@@ -193,9 +189,8 @@ sub start {
 	# Get the process list of the containers.
 	my $ps     = $self->control->ps;
 	my $images = $self->control->images;
-	
+
 	my @container_order = $self->_container_order(
-		containers => $args{containers},
 		foreground => $args{foreground}
 	);
 
@@ -216,16 +211,33 @@ sub start {
 			( defined $args{start_until} and $args{start_until} eq $container_name )
 		)?1:0;
 
+		my $image_name = $self->_image_name( container_name => $container_name );
+
 		# If the container doesn't exists, try to build it
-		if ( not defined $images->{$container_name} ) {
+		if ( not defined $images->{ $image_name } ) {
 
 			# TODO: Attempt to download it
 
-			$self->debug( "Image $container_name does not exist. Find or build it" );
+			if ( defined $self->project_config->{docker}{registry} ) {
 
-			$self->build(
-				container_name => $container_name
-			);
+				$self->control->pull(
+					registries => $self->project_config->{docker}{registry},
+					image_name => $image_name
+				);
+				
+				$images = $self->control->images;
+			}
+
+			if ( not defined $images->{ $image_name } ) {
+
+				$self->debug( "Image $container_name does not exist. Find or build it" );
+
+				$self->build(
+					container_name => $container_name
+				);
+
+				$images = $self->control->images;
+			}
 		}
 
 		my $instance_name = $self->_instance_name( $container_name );
@@ -246,7 +258,7 @@ sub start {
 				push @command, "restart";
 			}
 			else {
-				die "Don't know what to do with status $status";
+				DevEnv::Exception::Docker->throw( "Don't know what to do with status $status." );
 			}
 
 			push @command, $ps->{ $instance_name }{container_id};
@@ -271,6 +283,8 @@ sub start {
 		
 				foreach my $link ( @{$config->{links}} ) {
 
+					next if ( not $self->project_config->{containers}{ $link }{enabled} );
+
 					if ( $self->project_config->{containers}{ $link }{type} ne "data" ) {
 						push @command, "--link";
 						push @command, sprintf( "%s:%s", $self->_instance_name( $link ), $self->_instance_name( $link ) );
@@ -278,6 +292,23 @@ sub start {
 
 					push @command, "--volumes-from";
 					push @command, $self->_instance_name( $link );
+				}
+			}
+
+			# Always mount the home directory in the work container
+			if ( $config->{type} eq "work" ) {
+				push @{$config->{shares}}, {
+					src_dir  => $self->home_dir,
+					dest_dir => "/home/dev"
+				};
+			}
+
+			if ( defined $config->{shares} ) {
+
+				foreach my $share ( @{$config->{shares}} ) {
+
+					push @command, "-v";
+					push @command, sprintf( "%s:%s", $share->{src_dir}, $share->{dest_dir} );
 				}
 			}
 
@@ -305,6 +336,83 @@ sub start {
 	}
 }
 
+sub stop {
+
+	my $self = shift;
+	my %args = @_;
+
+	# Get the process list of the containers.
+	my $ps     = $self->control->ps;
+	my $images = $self->control->images;
+	
+	my @container_order = $self->_container_order(
+		containers => $args{containers},
+		foreground => $args{foreground}
+	);
+
+	$self->debug( "Containter Order = " . join ( ", ", @container_order ) );
+
+	# Get the order that the containers should be started
+	while ( my $container_name = shift @container_order ) {
+
+		my $config = $self->project_config->{containers}{ $container_name };
+
+		next if ( not $config->{enabled} );
+
+		# No need to stop a data container
+		next if ( $config->{type} eq "data" );
+
+		my $instance_name = $self->_instance_name( $container_name );
+
+		my @command = (
+			"stop",
+			$instance_name
+		);
+
+		$self->control->command( command => \@command );
+	}
+}
+
+sub remove {
+
+	my $self = shift;
+	my %args = @_;
+
+	my $force = $args{force} // 0;
+
+	# Get the process list of the containers.
+	my $ps     = $self->control->ps;
+	my $images = $self->control->images;
+	
+	my @container_order = $self->_container_order(
+		containers => $args{containers},
+		foreground => $args{foreground}
+	);
+
+	$self->debug( "Containter Order = " . join ( ", ", @container_order ) );
+
+	# Get the order that the containers should be started
+	while ( my $container_name = shift @container_order ) {
+
+		my $config = $self->project_config->{containers}{ $container_name };
+
+		next if ( not $config->{enabled} );
+
+		# Only remove the data container if forced
+		next if ( $config->{type} eq "data" and not $force );
+
+		my $instance_name = $self->_instance_name( $container_name );
+
+		my @command = (
+			"rm",
+			"--force",
+			$instance_name
+		);
+
+		$self->control->command( command => \@command );
+	}
+}
+
 sub build {
 
 	my $self = shift;
@@ -321,6 +429,18 @@ sub build {
 	my $PARAMS="";
 
 	system "cd $makefile_dir; $PARAMS make";
+}
+
+sub containers {
+
+	my $self = shift;
+	my %args  = @_;
+
+	my $all_containers = $args{all} // 1;
+
+	my $ps = $self->control->ps;
+
+	
 }
 
 __PACKAGE__->meta->make_immutable;

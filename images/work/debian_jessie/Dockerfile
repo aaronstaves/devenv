@@ -68,4 +68,5 @@ ADD tmp/default_env.sh /usr/local/bin/default_env.sh
 ADD tmp/template.sh    /usr/local/bin/template.sh
 
 ADD scripts/startup.sh /usr/local/bin/startup.sh
+RUN chmod 755 /usr/local/bin/startup.sh
 CMD /usr/local/bin/startup.sh

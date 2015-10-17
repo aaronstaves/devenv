@@ -4,6 +4,7 @@ use Moose;
 # ABSTRACT: Docker Control
 
 use DevEnv::VM;
+use DevEnv::Exceptions;
 
 extends 'DevEnv::Cmd::Command';
 
@@ -35,13 +36,26 @@ has 'build' => (
 	documentation => "Build the VM"
 );
 
+has 'status' => (
+    traits        => [ "Getopt" ],
+    isa           => 'Bool',
+    is            => 'rw',
+	documentation => "Give status on all VMs or just one"
+);
+
+has 'connect' => (
+    traits        => [ "Getopt" ],
+    isa           => 'Bool',
+    is            => 'rw',
+	documentation => "Connect to the VM"
+);
+
 has 'instance' => (
     traits        => [ "Getopt" ],
     isa           => 'Str',
     is            => 'rw',
 	cmd_aliases   => 'i',
-	documentation => "Give the instance a different name",
-	required      => 1
+	documentation => "Give the instance a name",
 );
 
 has 'config_file' => (
@@ -73,39 +87,52 @@ after 'execute' => sub {
 	my $opts = shift;
 	my $args = shift;
 
-	my $vm = DevEnv::VM->new(
-		project_config_file => $self->config_file,
-		instance_name       => $self->instance,
-		verbose             => $self->verbose
-	);
 
-	if ( $self->start ) {
+	if ( $self->status and not defined $self->instance ) {
 
-		if ( not defined $self->config_file or $self->config_file eq "" ) {
-			die "A config file is required to start a VM.";
-		}
-
-		$vm->start( 
-			tags  => $self->tag 
-		);
-	}
-	elsif ( $self->stop ) {
-
-		$vm->stop( tags => $self->tag );
-	}
-	elsif ( $self->remove ) {
-
-		$vm->remove(   );
-	}
-	elsif ( $self->build ) {
-
-		if ( not defined $self->config_file or $self->config_file eq "" ) {
-			die "A config file is required to build a VM.";
-		}
-
-		$vm->build(   );
+		DevEnv::VM->global_status();
 	}
 	else {
+
+		my $vm = DevEnv::VM->new(
+			project_config_file => $self->config_file,
+			instance_name       => $self->instance,
+			verbose             => $self->verbose
+		);
+
+		if ( $self->start ) {
+
+			if ( not defined $self->config_file or $self->config_file eq "" ) {
+				DevEnv::Exception->throw( "A config file is required to start a VM." );
+			}
+
+			$vm->start( 
+				tags  => $self->tag 
+			);
+		}
+		elsif ( $self->stop ) {
+
+			$vm->stop( tags => $self->tag );
+		}
+		elsif ( $self->remove ) {
+
+			$vm->remove(   );
+		}
+		elsif ( $self->build ) {
+
+			if ( not defined $self->config_file or $self->config_file eq "" ) {
+				DevEnv::Exception->throw( "A config file is required to build a VM." );
+			}
+
+			$vm->build(   );
+		}
+		elsif ( $self->connect ) {
+			$vm->connect();
+		}
+		else {
+
+			
+		}
 	}
 };
 

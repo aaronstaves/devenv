@@ -13,4 +13,5 @@ EXPOSE 5672 15672 4369
 ADD files/rabbitmq.config /tmp/rabbitmq.config
 
 ADD scripts/startup.sh /usr/local/bin/startup.sh
+RUN chmod 755 /usr/local/bin/startup.sh
 CMD [ "/usr/local/bin/startup.sh" ]

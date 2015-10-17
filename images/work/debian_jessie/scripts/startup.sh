@@ -4,8 +4,10 @@
 
 export PLENV_ROOT=/data/plenv
 
+# dev's home directory is actually a shared folder in the docker. Don't actually
+# make the home directory ( -M )
 groupadd -g $DEVENV_MY_GID dev
-useradd -l -d /data/home/dev -s /bin/bash -m -g $DEVENV_MY_GID -u $DEVENV_MY_UID dev
+useradd -l -d /home/dev -s /bin/bash -M -g $DEVENV_MY_GID -u $DEVENV_MY_UID dev
 echo "dev:dev" | chpasswd
 
 if [ ! -f "/data/home/dev/.bashrc" ]; then

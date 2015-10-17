@@ -2,6 +2,7 @@ package DevEnv::Config::Main;
 use MooseX::Singleton;
 
 use DevEnv;
+use DevEnv::Exceptions;
 
 use YAML::Tiny;
 use Path::Class;
@@ -16,7 +17,9 @@ sub _build_base_dir {
 
 	my $self = shift;
 
-	return DevEnv->new->base_dir;
+	return DevEnv->new(
+		instance_name => "none"
+	)->base_dir;
 }
 
 has '_config_dirs' => (
@@ -78,7 +81,7 @@ sub _build_config {
 	}
 
 	if ( not defined $config ) {
-		die "Cannot find the main config file";
+		DevEnv::Exception::Config->throw( "Cannot find the main config file." );
 	}
 
 	return $config;

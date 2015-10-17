@@ -9,6 +9,19 @@ use Template;
 
 use Data::Dumper;
 
+has 'vm_dir' => (
+	is      => 'ro',
+	isa     => 'Path::Class::Dir',
+	lazy    => 1,
+	builder => '_build_vm_dir'
+);
+sub _build_vm_dir {
+
+	my $self = shift;
+
+    return dir( $self->full_path( $self->project_config->{vm}{dir} ) );
+}
+
 has 'temp_dir' => (
 	is      => 'ro',
 	isa     => 'Path::Class::Dir',
@@ -25,12 +38,6 @@ sub _build_temp_dir {
 
 	return $dir;
 }
-
-has 'outside_home' => (
-	is      => 'ro',
-	isa     => 'Str',
-	default => "Home",
-);
 
 sub avahi_service {
 
@@ -63,7 +70,8 @@ sub avahi_service {
 	);
 
 	my $service_text = "";
-	$tt->process( "generic.tt", $vars, \$service_text ) or die $tt->error;
+	$tt->process( "generic.tt", $vars, \$service_text )
+		or DevEnv::Exception::VM->throw( "Could not generate generic avahi file: " . $tt->error . "." );
 
 	return $service_text;
 }
@@ -105,11 +113,13 @@ sub get_avahi_service_files {
 	return wantarray ? @avahi_files : \@avahi_files;
 }
 
-
-sub start  { }
-sub stop   { }
-sub remove { }
-sub build  { }
+sub is_running { }
+sub start      { }
+sub stop       { }
+sub remove     { }
+sub build      { }
+sub status     { }
+sub connect    { }
 
 __PACKAGE__->meta->make_immutable;
 

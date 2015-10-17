@@ -1,28 +1,32 @@
 package DevEnv::Role::Project;
 use Moose::Role;
 
+use DevEnv;
 use DevEnv::Config::Project;
 
 use Path::Class;
 use File::Spec;
+
+requires qw/instance_name/;
 
 has 'project_config_file' => (
 	is       => 'rw',
 	isa      => 'Str|Undef',
 );
 
-has 'instance_name' => (
-	is       => 'ro',
-	isa      => 'Str',
-	required => 1,
-	trigger  => sub {
-		my $self          = shift;
-		my $instance_name = shift;
-
-		$instance_name =~ s/\s/_/g;
-		$instance_name =~ s/\//_/g;
-
-		$self->{instance_name} = $instance_name;
+has 'containers' => (
+	traits  => ['Array'],
+	is      => 'rw',
+	isa     => 'ArrayRef[Str]',
+	default => sub { [] },
+	handles => {
+		all_containers    => 'elements',
+		add_container     => 'push',
+		get_container     => 'get',
+		count_containers  => 'count',
+		has_containers    => 'count',
+		has_no_containers => 'is_empty',
+		sorted_containers => 'sort',
 	}
 );
 
@@ -44,27 +48,44 @@ sub _build_project_config {
 
 	$project_config->instance_name( $self->instance_name );
 
-	return $project_config->config;
-}
+	# Get the hashref config
+	my $config_hashref = $project_config->config;
 
-has 'instance_dir' => (
-	is      => 'ro',
-	isa     => 'Path::Class::Dir',
-	lazy    => 1,
-	builder => '_build_instance_dir'
-);
-sub _build_instance_dir {
-
-	my $self = shift;
-
-	# This is where to build the VMs
-	my $vm_dir = $self->project_config->{vm}{dir};
-
-	if ( $vm_dir !~ m/^\// ) {
-		$vm_dir = sprintf( "%s/%s", $ENV{HOME}, $vm_dir );
+	# If no active containers have been set in the instance, read from config
+	if ( $self->has_no_containers and defined $config_hashref->{active_containers} ) {
+		$self->containers( $config_hashref->{active_containers} );
 	}
 
-	return dir( $vm_dir, "vm", $self->instance_name );
+	# Flag which containers are enabled/disabled
+    foreach my $container_name ( keys %{$config_hashref->{containers}} ) {
+
+        my $container_config = $config_hashref->{containers}{ $container_name };
+
+        # Set it as not enabled, and enabled it below
+        $container_config->{enabled} = 0;
+
+        # If it is required, then enable it
+        if ( $container_config->{required} ) {
+            $container_config->{enabled} = 1;
+        }
+
+        # Check if we should enable this container
+        if ( grep { $container_name eq $_ } $self->all_containers ) {
+            $container_config->{enabled} = 1;
+        }
+
+        # Always start the data container first
+        if ( $container_config->{type} eq "data" ) {
+            $container_config->{enabled} = 1;
+        }
+
+        # If the we want it in the foreground, make sure the work container goes last
+        if ( $container_config->{type} eq "work" ) {
+            $container_config->{enabled} = 1;
+        }
+    }
+
+	return $config_hashref;
 }
 
 has 'user_id' => (
@@ -75,7 +96,7 @@ has 'user_id' => (
 );
 sub _build_user_id {
 	my $self = shift;
-	return $ENV{DEVENV_MY_UID} // $self->project_config->{general}{user_id};
+	return $ENV{DEVENV_MY_UID} // $self->project_config->{general}{user_id} // 1000;
 }
 
 has 'group_id' => (
@@ -86,7 +107,7 @@ has 'group_id' => (
 );
 sub _build_group_id {
 	my $self = shift;
-	return $ENV{DEVENV_MY_GID} // $self->project_config->{general}{group_id};
+	return $ENV{DEVENV_MY_GID} // $self->project_config->{general}{group_id} // 1000;
 }
 
 has 'home_dir' => (
@@ -97,7 +118,7 @@ has 'home_dir' => (
 );
 sub _build_home_dir {
 	my $self = shift;
-	return $ENV{DEVENV_MY_HOME} // $self->project_config->{general}{home_dir};
+	return $ENV{DEVENV_MY_HOME} // $self->project_config->{general}{home_dir} // $ENV{HOME};
 }
 
 1;

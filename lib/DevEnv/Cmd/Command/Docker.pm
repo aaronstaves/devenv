@@ -4,6 +4,9 @@ use Moose;
 # ABSTRACT: Docker Control
 
 use DevEnv::Docker;
+use DevEnv::Exceptions;
+
+use Data::Dumper;
 
 extends 'DevEnv::Cmd::Command';
 
@@ -26,6 +29,13 @@ has 'remove' => (
     isa           => 'Bool',
     is            => 'rw',
 	documentation => "Remove the containers"
+);
+
+has 'status' => (
+    traits        => [ "Getopt" ],
+    isa           => 'Bool',
+    is            => 'rw',
+	documentation => "Display Status"
 );
 
 has 'config_file' => (
@@ -161,8 +171,15 @@ after 'execute' => sub {
 
 		$docker->remove( force => $self->force );
 	}
+	elsif ( $self->status ) {
+
+		my $status = $docker->status();
+
+print STDERR Dumper( $status );
+
+	}
 	else {
-		die "No command, doing nothing :(";
+		DevEnv::Exception->throw( "No command, doing nothing." );
 	}
 };
 

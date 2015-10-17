@@ -2,6 +2,7 @@ package DevEnv::Config::Project;
 use MooseX::Singleton;
 
 use DevEnv;
+use DevEnv::Exceptions;
 
 use YAML::Tiny;
 use Path::Class;
@@ -15,7 +16,11 @@ has 'devenv' => (
 );
 sub _build_devenv {
 
-	return DevEnv->new;
+	my $self = shift;
+
+	return DevEnv->new(
+		instance_name => $self->instance_name
+	)
 }
 
 has 'base_dir' => (
@@ -63,30 +68,6 @@ has 'instance_name' => (
 	isa => 'Str'
 );
 
-has 'instance_dir' => (
-	is      => 'ro',
-	isa     => 'Path::Class::Dir',
-	lazy    => 1,
-	builder => '_build_instance_dir'
-);
-sub _build_instance_dir {
-
-	my $self = shift;
-
-    my $vm_dir = $self->devenv->main_config->{vm}{dir};
-
-	if ( not defined $vm_dir ) {
-		die "The VM directory has not been defined! Where are we going to store all our VMs :(";
-	}
-
-	# TODO: We repeat this in the project role, might be good refector'd someplace
-    if ( $vm_dir !~ m/^\// ) {
-        $vm_dir = sprintf( "%s/%s", $ENV{HOME}, $vm_dir );
-    }
-
-	return dir( $vm_dir, "vm", $self->instance_name );
-}
-
 has 'config_file' => (
 	is       => 'rw',
 	isa      => 'Str',
@@ -129,7 +110,7 @@ sub _build_config {
 
 	# Load the config from instance. This will be what the instance was created with. Load
 	# last. 
-	my $instance_config_file = $self->instance_dir->file( "config.yml" )->stringify;
+	my $instance_config_file = $self->devenv->instance_dir->file( "config.yml" )->stringify;
 	my $instance_config = {};
 
 	if ( -f $instance_config_file ) {
@@ -147,10 +128,20 @@ sub _build_config {
 	);
 
 	if ( not defined $final_config->{containers} ) {
-		die "Cannot find any containers in config file, or no config file specified.";
+		DevEnv::Exception::Config->throw( "Cannot find any containers in config file, or no config file specified. Specifiy a config file, or check if the config file is setup correctly." );
 	}
 
 	return $final_config;
+}
+
+sub reload_config {
+
+	my $self = shift;
+	my %args = @_;
+
+	$self->{config} = $self->_build_config();
+
+	return undef;
 }
 
 sub instance_config_write {
@@ -158,9 +149,12 @@ sub instance_config_write {
 	my $self = shift;
 	my %args = @_;
 
-	my $yaml = YAML::Tiny->new( $self->config );
+	my $config = $args{config} // $self->config;
+	my $file   = $args{file}   // $self->devenv->instance_dir->file( "config.yml" );
 
-    $yaml->write( $self->instance_dir->file( "config.yml" )->stringify );
+	my $yaml = YAML::Tiny->new( $config );
+
+    $yaml->write( $file->stringify );
 
 	return undef;
 }

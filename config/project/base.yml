@@ -4,13 +4,38 @@ containers:
     type: data
     description: Persistent Data
     image: perl
-    enabled: 1
+    required: 1
+  pg9_4:
+    type: db
+    description: PostgreSQL 9.4
+    image: pg9_4
+    links:
+      - data
+    services:
+      - name: PostgreSQL
+        type: postgres
+        src_port: 5432
+        dst_port: 5432
+    required: 1
+  mq:
+    type: mq
+    description: RabbitMQ
+    image: rabbitmq
+    links:
+      - data
+    services:
+      - name: Rabbit MQ
+        type: http
+        src_port: 15672
+        dst_port: 15672
   work:
     type: work
     description: Work Environment
     image: debian_jessie
     links:
       - data
+      - pg9_4
+      - mq
     services:
       - name: SSH
         type: ssh
@@ -25,30 +50,7 @@ containers:
         value: /data/plenv
       - name: PERL_VERSION
         value: 5.18.0
-    enabled: 1
-  pg9_4:
-    type: db
-    description: PostgreSQL 9.4
-    image: pg9_4
-    links:
-      - data
-    services:
-      - name: PostgreSQL
-        type: postgres
-        src_port: 5432
-        dst_port: 5432
-    enabled: 1
-  mq:
-    type: mq
-    description: RabbitMQ
-    image: rabbitmq
-    links:
-      - data
-    services:
-      - name: Rabbit MQ
-        type: http
-        src_port: 15672
-        dst_port: 15672
+    required: 1
   samba:
     type: fs
     description: Samba Access

@@ -3,7 +3,9 @@ use Moose;
 
 extends 'DevEnv::VM::Module';
 
+use DevEnv;
 use DevEnv::Docker;
+use DevEnv::Exceptions;
 use DevEnv::Config::Project;
 
 use IPC::Run;
@@ -13,11 +15,18 @@ use File::Copy;
 use File::Path qw/make_path remove_tree/;
 use File::Copy::Recursive qw/fcopy rcopy dircopy fmove rmove dirmove/;
 use Template;
+use Clone qw/clone/;
+
+use Data::Dumper;
+
+our $VAGRANT_FILE_NAME = "vagrant";
 
 has 'vagrant_file_name' => (
 	is      => 'ro',
 	isa     => 'Str',
-	default => 'vagrant'
+	default => sub {
+		return $VAGRANT_FILE_NAME
+	}
 );
 
 has 'vagrant' => (
@@ -54,7 +63,7 @@ has 'external_temp_dir' => (
 sub _build_external_temp_dir {
 
 	my $self = shift;
-	return $self->instance_dir->subdir( $self->outside_home, $self->temp_dir_name );
+	return $self->instance_dir->subdir( $self->temp_dir_name );
 }
 
 has 'internal_temp_dir' => (
@@ -66,7 +75,7 @@ has 'internal_temp_dir' => (
 sub _build_internal_temp_dir {
 
 	my $self = shift;
-	return $self->vagrant_share_dir->subdir( $self->outside_home, $self->temp_dir_name );
+	return $self->vagrant_share_dir->subdir( $self->temp_dir_name );
 }
 
 has 'vargant_params' => (
@@ -95,6 +104,109 @@ sub _build_params {
 	return join ( " ", @params );
 }
 
+=head1 METHODS
+
+=head2 CLASS METHODS
+
+=head3 get_global_status
+
+Get the status off all the Vagrant VMs. Returns a hashref
+with the name of the VM as the key.
+
+=cut
+
+sub get_global_status {
+
+	my $class = shift;
+	my %args = @_;
+
+	my ( $stdout, $stderr );
+	IPC::Run::run
+		[ which( $VAGRANT_FILE_NAME ), 'global-status' ],
+		'>',  \$stdout,
+		'2>', \$stderr;
+
+	my @columns = (
+		{ title   => 'id',        key => 'id' },
+		{ title   => 'name',      key => 'name' },
+		{ title   => 'provider',  key => 'provider' },
+		{ title   => 'state',     key => 'state' },
+		{ title   => 'directory', key => 'directory' },
+	);
+
+	my @rows = split /\n/, $stdout;
+
+	my $header     = shift @rows;
+
+	my $last_index = length ( $header ) * 2;
+	foreach my $column ( reverse @columns ) {
+		$column->{start} = index ( $header, $column->{title} );
+		$column->{width} = $last_index - $column->{start};
+		$last_index = $column->{start}
+	}
+	shift @rows;
+
+	my $vm_dir = DevEnv->full_path( DevEnv->new(
+		instance_name => "none"
+	)->main_config->{vm}{dir} );
+
+	my $vms = undef;
+	foreach my $row ( @rows ) {
+
+		$row =~ s/^\s+//;
+
+		# End when we find the end of the list
+		last if ( $row eq "" );
+
+		my %record = ();
+		foreach my $column ( reverse @columns ) {
+
+			my $value = substr ( $row, $column->{start}, $column->{width} );
+			$value =~ s/\s+$//;
+			$record{ $column->{key} } = $value;
+		}
+
+		# Skip VMs that are not ours :)
+		next if ( $record{directory} !~ m/^\Q$vm_dir\E/ );
+
+		my ( $name ) = $record{directory} =~ m/([^\/]+$)/;
+
+		$vms->{ $name } = \%record;
+	}
+
+	return $vms;
+}
+
+=head2 OBJECT METHODS
+
+=head3 is_running (override )
+
+Is this instance of the VM running
+
+=cut
+
+override 'is_running' => sub { 
+
+	my $self = shift;
+
+	my $vms = $self->get_global_status;
+
+	my $is_running = 0;
+
+	if ( defined $vms->{ $self->instance_name } and $vms->{ $self->instance_name }{state} eq "running" ) {
+		$is_running = 1;
+	}
+
+	return $is_running;
+};
+
+
+=head3 start (override)
+
+This method will start the VM. If the VM does not exists, it will build the VM.
+
+=cut
+
 override 'start' => sub { 
 
 	my $self = shift;
@@ -110,6 +222,12 @@ override 'start' => sub {
 	return undef;
 };
 
+=head3 stop (override)
+
+This method will stop the VM.
+
+=cut
+
 override 'stop' => sub { 
 
 	my $self = shift;
@@ -120,6 +238,12 @@ override 'stop' => sub {
 
 	return undef;
 };
+
+=head3 remove (override)
+
+This method will destory the VM and remove the instance directory.
+
+=cut
 
 override 'remove' => sub { 
 
@@ -151,18 +275,29 @@ sub _copy_devenv_to_vagrant {
 
 	# We are going to use the config created for the instance. Remove the old config directory
 	# and copy the instance config.
-	remove_tree $self->external_temp_dir->subdir( "devenv", "config", "project" )->stringify;
-	make_path $self->external_temp_dir->subdir( "devenv", "config", "project" )->stringify;
-	copy $self->instance_dir->file( "config.yml" ), $self->external_temp_dir->subdir( "devenv", "config", "project" )->file( "config.yml" );
+	remove_tree $self->external_temp_dir->subdir( "devenv", "config" )->stringify;
 
-#	TODO: Only copy over required config and images
-#	remove_tree $self->external_temp_dir->subdir( "devenv", "images" )->stringify;
+	make_path $self->external_temp_dir->subdir( "devenv" )->subdir( "config", "main" )->stringify;
 
-# 	TODO: Also check .devenv for custom configs
+	my $project_config = clone( $self->project_config() );
 
+	# Since we are not dealing with a VM, remove the VM config section
+	delete $project_config->{vm};
+
+	# Build a config for the project. This config has been cooked with instance information.
+	DevEnv::Config::Project->instance->instance_config_write(
+		config => $project_config,
+		file   => $self->external_temp_dir->subdir( "devenv" )->subdir( "config", "main" )->file( "config.yml" )
+	);
 
 	return undef;
 }
+
+=head3 build (override)
+
+This method will build the VM.
+
+=cut
 
 override 'build' => sub {
 	
@@ -171,29 +306,36 @@ override 'build' => sub {
 	$self->debug( "Building Vagrant box" );
 
 	if ( -d $self->instance_dir ) {
-		die "VM already exists at " . $self->instance_dir;
+		DevEnv::Exception::VM->throw( "VM already exists at " . $self->instance_dir . "." );
 	}
-	
-	make_path $self->external_temp_dir->stringify;
 
-	# Make a copy of the config file in the instance dir
-	DevEnv::Config::Project->instance->instance_config_write();
+	make_path $self->external_temp_dir->stringify;
 
 	my $vars = {
 		uid               => $self->user_id,
 		gid               => $self->group_id,
 		box_name          => $self->instance_name,
-		user_home_dir     => $self->vagrant_share_dir->subdir( $self->outside_home )->stringify,
 		config_file       => $self->project_config_file,
 		internal_temp_dir => $self->internal_temp_dir->stringify,
 		services          => [],
 	};
 
+	if ( defined $self->project_config->{general}{home_dir} and $self->project_config->{general}{home_dir} ne "" ) {
+
+		my $home_dir = $self->project_config->{general}{home_dir};
+
+		if ( $home_dir !~ m /\// ) {
+			$home_dir = $self->vm_dir->subdir( $home_dir )->stringify,
+		}
+	
+		$vars->{home_dir} = $home_dir;
+	}
+
 	my $service_dir = $self->external_temp_dir->subdir( "services" )->stringify;
 
 	$self->debug( "Make service temp dir at $service_dir" );
 
-	make_path $service_dir or die "Cannot make the service temp dir $service_dir: $!";
+	make_path $service_dir or DevEnv::Exception::VM->throw( "Cannot make the service temp dir $service_dir: $!" );
 
 	foreach my $avahi_service ( $self->get_avahi_service_files() ) {
 
@@ -201,7 +343,7 @@ override 'build' => sub {
 
 		$self->debug( "Writing service $file" );
 
-		open my $fh, ">", $file or die "Cannot write $file: $!";
+		open my $fh, ">", $file or DevEnv::Exception::VM->throw( "Cannot write $file: $!" );
 		print $fh $avahi_service->{file};
 		close $fh;
 
@@ -213,7 +355,6 @@ override 'build' => sub {
 
 	$self->_copy_devenv_to_vagrant();
 
-
 	my $inc_path = sprintf( "%s/templates/vm/vagrant/", $self->base_dir() );
 
 	$self->debug( "Template include path is $inc_path" );
@@ -223,11 +364,19 @@ override 'build' => sub {
 	);
 
 	my $vagrantfile_text = "";
-	$tt->process( "Vagrantfile.tt", $vars, \$vagrantfile_text ) or die $tt->error;
+	$tt->process( "Vagrantfile.tt", $vars, \$vagrantfile_text )
+		or DevEnv::Exception::VM->throw( "Cannot process the Vagrantfile.tt: " . $tt->error . "." );
 
-	open my $fh, ">", sprintf ( "%s/Vagrantfile", $self->instance_dir ) or die "Could not write Vagrantfile to VM directory " . $self->instance_dir;
+	open my $fh, ">", sprintf ( "%s/Vagrantfile", $self->instance_dir )
+		or DevEnv::Exception::VM->throw( "Could not write Vagrantfile to VM directory " . $self->instance_dir . "." );
+
 	print $fh $vagrantfile_text;
 	close $fh;
+
+    DevEnv::Config::Project->instance->instance_config_write(
+        config => $self->project_config,
+        file   => $self->instance_dir->file( "config.yml" )
+    );
 
 	system sprintf( "cd %s; %s %s up", $self->instance_dir, $self->vargant_params, $self->vagrant );
 
@@ -243,6 +392,37 @@ override 'build' => sub {
 	system $cmd;
 
 	return undef;
+};
+
+=head3 status (override)
+
+This method will return the status of the VM instance.
+
+=cut
+
+override 'status' => sub {
+
+	my $self = shift;
+	my %args = @_;
+
+};
+
+=head3 connect (override)
+
+Make a shell connection to the VM
+
+=cut
+
+override 'connect' => sub {
+
+	my $self = shift;
+	my %args = @_;
+
+	if ( not $self->is_running ) {
+		DevEnv::Exceptions->throw( "Instance " . $self->instance_name . " is not running. Cannot connect." );
+	}
+
+	system sprintf( "cd %s; %s %s ssh", $self->instance_dir, $self->vargant_params, $self->vagrant );
 };
 
 __PACKAGE__->meta->make_immutable;

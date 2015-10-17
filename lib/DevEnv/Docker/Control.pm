@@ -3,8 +3,11 @@ use Moose;
 
 extends 'DevEnv';
 
+use DevEnv::Exceptions;
+
 use IPC::Run;
 use File::Which;
+use JSON::XS;
 
 has '_docker_file_name' => (
 	traits  => ['Array'],
@@ -42,7 +45,7 @@ sub _build_docker {
 	}
 
 	if ( not defined $docker ) {
-		die "Could not find docker file. Is it installed and in the PATH?";
+		DevEnv::Exception::Docker->throw( "Could not find docker file. Is it installed and in the PATH?" );
 	}
 
 	return $docker;
@@ -158,6 +161,61 @@ sub images {
 	}
 
 	return $images;
+}
+
+sub pull {
+
+	my $self = shift;
+	my %args = @_;
+
+	my $registries = $args{registries} || [];
+	my $image_name = $args{image_name};
+
+	my $found = 0;
+
+	foreach my $registry ( @{$registries} ) {
+
+		my @cmd = (
+			$self->docker,
+			"pull",
+			"$registries/$image_name"
+		);
+
+		my ( $stdout, $stderr );
+		IPC::Run::run
+			\@cmd, 
+			'>',  \$stdout,
+			'2>', \$stderr;
+
+		#Status: Downloaded newer image for debian:latest
+		#Error: image library/blah:latest not found
+		#Invalid repository name (ex: "registry.domain.tld/myrepos")
+		#Error: image blah:latest not found
+	}
+
+	return $found;
+}
+
+sub status {
+
+	my $self = shift;
+	my %args = @_;
+
+	my $container_name = $args{container_name};
+	
+	my @cmd = (
+		$self->docker,
+		'inspect',
+		$container_name
+	);
+	
+	my ( $stdout, $stderr );
+	IPC::Run::run
+		\@cmd, 
+		'>',  \$stdout,
+		'2>', \$stderr;
+
+	return JSOX::XS->new->decode( $stdout );
 }
 
 sub command {

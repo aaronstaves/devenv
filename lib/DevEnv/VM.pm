@@ -4,7 +4,12 @@ use Moose;
 extends 'DevEnv';
 with 'DevEnv::Role::Project';
 
+use DevEnv::Exceptions;
+
+use Module::Find;
 use Module::Loaded;
+
+my @VM_MODULES = useall DevEnv::VM::Module;
 
 has '_vm' => (
 	is  => 'ro',
@@ -15,6 +20,8 @@ has '_vm' => (
 			stop
 			remove
 			build
+			status
+			connect
 		/
 	]
 );
@@ -27,19 +34,56 @@ sub BUILD {
 	my $class = __PACKAGE__ . "::Module::" . $self->project_config->{vm}{type};
 
 	if ( $args->{verbose} ) {
-		print STDERR "Using class $class for VM\n";
+
+		$self->debug( "Using class $class for VM" );
 	}
 
 	if ( not is_loaded $class  ) {
 
 		unless ( eval "require $class" ) {
-			die "Could not load $class: $@";
+	
+			DevEnv::Exception::VM->throw( "Could not load $class: $@." );
 		}
 
 		$class->import();
 	}
 
 	$self->{_vm} = $class->new( %{$args} );
+
+	return undef;
+}
+
+sub global_status {
+
+	my $class = shift;
+
+    print sprintf ( "%-20s %-20s %-10s\n",
+        "Instance Name",
+		"Type",
+        "Status"
+    );
+
+    print
+        "==================== ",
+        "==================== ",
+        "========== ",
+        "\n";
+
+	foreach my $module ( @VM_MODULES ) {
+
+		my ( $module_name ) = $module =~ m/([^:]+)$/;
+
+		my $vms = $module->get_global_status();
+
+		foreach my $name ( sort keys %{$vms} ) {
+
+			print sprintf ( "%-20s %-20s %-10s\n",
+				$name,
+				$module_name,
+				$vms->{$name}{state}
+			)
+		}
+	}
 
 	return undef;
 }
