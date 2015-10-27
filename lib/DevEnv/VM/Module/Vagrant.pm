@@ -218,6 +218,7 @@ override 'start' => sub {
 	}
 
 	system sprintf( "cd %s; %s %s up", $self->instance_dir, $self->vargant_params, $self->vagrant );
+	system sprintf( "cd %s; %s %s provision", $self->instance_dir, $self->vargant_params, $self->vagrant );
 
 	return undef;
 };
@@ -307,6 +308,10 @@ override 'build' => sub {
 
 	if ( -d $self->instance_dir ) {
 		DevEnv::Exception::VM->throw( "VM already exists at " . $self->instance_dir . "." );
+	}
+
+	if ( not defined $self->project_config_file or $self->project_config_file eq "" ) {
+		DevEnv::Exception->throw( "A config file is required to build a VM." );
 	}
 
 	make_path $self->external_temp_dir->stringify;

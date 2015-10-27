@@ -102,10 +102,6 @@ after 'execute' => sub {
 
 		if ( $self->start ) {
 
-			if ( not defined $self->config_file or $self->config_file eq "" ) {
-				DevEnv::Exception->throw( "A config file is required to start a VM." );
-			}
-
 			$vm->start( 
 				tags  => $self->tag 
 			);
@@ -119,10 +115,6 @@ after 'execute' => sub {
 			$vm->remove(   );
 		}
 		elsif ( $self->build ) {
-
-			if ( not defined $self->config_file or $self->config_file eq "" ) {
-				DevEnv::Exception->throw( "A config file is required to build a VM." );
-			}
 
 			$vm->build(   );
 		}

@@ -80,7 +80,18 @@ sub get_avahi_service_files {
 
 	my $self = shift;
 
-	my @avahi_files = ();
+	# Always include the control panel service
+	my @avahi_files = (
+		name => 'devenv_cp',
+		file => $self->avahi_service(
+			box_name => $self->instance_name,
+			name     => "Control Panel",
+			type     => "http",
+			port     => $self->project_config->{web}{port} // 5999,
+			protocal => "tcp"
+		)
+	);
+
 	foreach my $container_name ( keys %{$self->project_config->{containers}} ) {
 
 		my $config = $self->project_config->{containers}{ $container_name };
