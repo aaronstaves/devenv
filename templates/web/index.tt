@@ -3,15 +3,291 @@
 	<head>
 		<meta charset="UTF-8"></meta>
 		<title>[% instance_name %] Control Panel</title>
-		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js">
-		<script type='text/javascript'>
+		<style>
 
-			function set_status( status ) {
+			body {
+				background-color: #34495e;
+				color: #ffffff;
+				padding: 5px;
+				font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+			}
+
+			#status {
+				font-size: 48pt;
+			}
+
+			#containers {
+				width: 100%;    
+				border: 1px solid #afafaf;
+				border-spacing: 0;
+			}
+
+			.header {
+				border-bottom: 1px solid white;
+				background-color: #000000;
+				padding: 5px;
+			}
+
+			.container {}
+
+			.enabled  { width: 10%; padding: 5px; border-bottom: 1px solid #afafaf; }
+			.name     { width: 10%; padding: 5px; border-bottom: 1px solid #afafaf; }
+			.desc     { width: 20%; padding: 5px; border-bottom: 1px solid #afafaf; }
+			.status   { width: 20%; padding: 5px; border-bottom: 1px solid #afafaf; }
+			.services { width: 30%; padding: 5px; border-bottom: 1px solid #afafaf; }
+			.log      { width: 10%; padding: 5px; border-bottom: 1px solid #afafaf; }
+
+			a {
+				color: #ffffff;
+			}
+
+		</style>
+		<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/themes/smoothness/jquery-ui.css">
+		<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+		<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
+		<script src=""></script>
+		<script>
+
+			$(document).ready( function() {
+	
+					$("#b_start").click(
+						function() {
+
+							$( "#dialog-start" ).dialog( "open" );
+	
+							var containers="";
+							$(".containers:checked").each(function() 
+							{
+								containers += $(this).val()+",";
+							});
+
+							$.ajax(
+								{
+									url: "/action_start?containers=" + containers,
+									success: function( data ) {
+
+										set_status ( data );
+										render_containers( data.containers );
+
+										$( "#dialog-start" ).dialog( "close" );
+									},
+									error : function( data ) {
+
+										$( "#dialog-start" ).dialog( "close" );
+									}
+								}
+							);
+						}
+					);
+
+					$("#b_stop").click(
+						function() {
+
+							$( "#dialog-stop" ).dialog( "open" );
+
+							$.ajax(
+								{
+									url: "/action_stop",
+									success: function( data ) {
+
+										set_status ( data );
+										render_containers( data.containers );
+
+										$( "#dialog-stop" ).dialog( "close" );
+									}
+								}
+							);
+						}
+					);
+
+					$("#b_refresh").click(
+						function() {
+
+							var containers="";
+							$(".containers:checked").each(function() 
+							{
+								containers += $(this).val()+",";
+							});
+
+							$.ajax(
+								{
+									url: "/action_refresh?containers=" + containers,
+									success: function( data ) {
+
+										set_status ( data );
+										render_containers( data.containers );
+									}
+								}
+							);
+						}
+					);
+
+					$("#b_remove").click(
+						function() {
+
+							$.ajax(
+								{
+									url: "/action_remove",
+									success: function( data ) {
+
+										set_status ( data );
+										render_containers( data.containers );
+									}
+								}
+							);
+						}
+					);
+
+					$("#b_status").click(
+						function() {
+
+							$.ajax(
+								{
+									url: "/action_status",
+									success: function( data ) {
+
+										console.dir( data );
+
+										set_status ( data );
+										render_containers( data.containers );
+									}
+								}
+							);
+						}
+					);
+
+					$("#dialog-start").dialog({
+						autoOpen: false
+					});
+					$("#dialog-stop").dialog({
+						autoOpen: false
+					});
+					$("#dialog-refresh").dialog({
+						autoOpen: false
+					});
+					$("#dialog-remove").dialog({
+						autoOpen: false
+					});
+
+					get_containers();
+				}
+			);
+
+			function set_status( data ) {
+
+				var disable_start   = true;
+				var disable_stop    = true;
+				var disable_refresh = false;
+				var disable_remove  = false;
+
+				var status = "[% instance_name %] is NOT running.";
+				if ( data.is_running ) {
+					status = "[% instance_name %] is running.";
+					disable_stop = false;
+				}
+				else if ( data.is_error ) {
+					status = "[% instance_name %] is in an error state.";
+					disable_stop = false;
+				}
+				else {
+					disable_start = false;
+				}
+
+				$("#b_start").prop('disabled', disable_start );
+				$("#b_stop").prop('disabled', disable_stop );
+				$("#b_refresh").prop('disabled', disable_refresh );
+				$("#b_remove").prop('disabled', disable_remove );
+
+				$("#status").empty();
+				$("#status").append( status );
+				window.status = status;
 			}
 
 			function _add_container_info( container ) {
 
+
+				var service_html = "";
+				if ( container.config.services ) {
+
+					var services = new Array();
+
+					for ( var index = 0; index < container.config.services.length; index++ ) {
+	
+						switch ( container.config.services[index].type ) {
+							case "http" : 
+								services.push(
+									"<a href='http://[% hostname %]" +
+										( container.config.services[index].src_port?":" + container.config.services[index].src_port:"" ) +
+										( container.config.services[index].path?container.config.services[index].path:"" ) +
+										"' target='" + 
+									    container.config.services[index].name +	
+										"'>" + 
+										container.config.services[index].name + 
+									"</a>"
+								);
+								break;
+							case "https" : 
+								services.push(
+									"<a href='https://[% hostname %]" +
+										( container.config.services[index].src_port?":" + container.config.services[index].src_port:"" ) +
+										( container.config.services[index].path?container.config.services[index].path:"" ) +
+										"' target='" + 
+									    container.config.services[index].name +	
+										"'>" + 
+										container.config.services[index].name + 
+									"</a>"
+								);
+								break;
+							case "smb" : 
+								services.push(
+									"<a href='smb://dev:dev@[% hostname %]" +
+										"' target='" + 
+									    container.config.services[index].name +	
+										"'>" + 
+										container.config.services[index].name + 
+									"</a>"
+								);
+								break;
+							case "ssh" : 
+								services.push(
+									"<a href='ssh://dev:dev@[% hostname %]" +
+										( container.config.services[index].src_port?":" + container.config.services[index].src_port:"" ) +
+										"' target='" + 
+									    container.config.services[index].name +	
+										"'>" + 
+										container.config.services[index].name + 
+									"</a>"
+								);
+								break;
+							default:
+								services.push( container.config.services[index].name );
+								break;
+						}
+					}
+
+					if ( services.length && container.config.enabled && container.status.is_running ) {
+	
+						service_html = "<ul><li>" +
+							services.join( "</li><li>" ) +
+							"</li></ul>";
+					}
+				}
+
 				$("#containers").append(
+
+					"<tr class='container'>" +
+						"<td class='enabled'>" +
+							( container.config.required?"Yes":"<input class='containers' name='containers' type='checkbox' multiple value='" + container.config.name + "'" +
+								( container.config.enabled?"checked":"" ) + "> " ) +
+						"</td>" +
+						"<td class='name'>" + container.config.name + "</td>" +
+						"<td class='desc'>" + container.config.description + "</td>" +
+						"<td class='status'>" + ( container.ps?container.ps.status:"" ) + "</td>" +
+						"<td class='services'>" + service_html + "</td>" +
+						"<td class='log'>" + 
+							( container.ps?("<a href='/page_log?container_name=" + container.ps.names + "' target='" + container.ps.names + "'>Log</a>"):"" ) +
+						"</td>" +
+					"</tr>"
 				);
 			}
 
@@ -19,63 +295,74 @@
 
 				$("#containers").empty();
 
+				$("#containers").append(
+
+					"<tr class='header'>" +
+						"<td class='enabled'>Enabled</td>" +
+						"<td class='name'>Name</td>" +
+						"<td class='desc'>Description</td>" +
+						"<td class='status'>Status</td>" +
+						"<td class='services'>Services</td>" +
+						"<td class='log'>Log Link</td>" +
+					"</tr>"
+				);
+
 				for ( var index = 0; index < containers.length; index++ ) {
 
 					_add_container_info( containers[ index ] );
 				}
 			}
 
-			function get_containers {
-				
+			function get_containers() {
+			
 				$.ajax(
 					{
-						url: "http://localhost:6000/action_status",
+						url: "/action_status",
+						success: function( data ) {
+
+							set_status ( data );
+							render_containers( data.containers );
+  						}
 					}
-				).done(
-					function( containers ) {
-						render_containers( containers );
-					}
-				)
+				);
 			}
 
-			$(document).ready(
-
-				function() {
-
-					$("#b_start").click(
-						function() {
-						}
-					);
-
-					$("#b_stop").click(
-						function() {
-						}
-					);
-
-					$("#b_refresh").click(
-						function() {
-						}
-					);
-
-					$("#b_remove").click(
-						function() {
-						}
-					);
-
-					get_containers();
-				}
-			);
 
 		</script>
 	</head>
 	<body>
-		<div>
-			<button id='b_start'>Start</button>
-			<button id='b_stop'>Stop</button>
-			<button id='b_refresh'>Refresh</button>
-			<button id='b_remove'>Remove</button>
-		</div>
 		<div id='status'></div>
-		<div id='containers'></div>
+		<div>
+			<button id='b_start'   disabled>Start</button>
+			<button id='b_stop'    disabled>Stop</button>
+			<button id='b_refresh' disabled>Refresh</button>
+			<button id='b_remove'  disabled>Remove</button>
+			<button id='b_status'>Update Status</button>
+		</div>
+		<table id='containers'></table>
+		<div id="dialog-start" title="Starting Containers">
+			<p>
+				<span class="ui-icon ui-icon-circle-check" style="float:left; margin:0 7px 50px 0;"></span>
+				Starting the containers
+			</p>
+		</div>
+		<div id="dialog-stop" title="Stopping Containers">
+			<p>
+				<span class="ui-icon ui-icon-circle-check" style="float:left; margin:0 7px 50px 0;"></span>
+				Stopping the containers. This can take a bit.
+			</p>
+		</div>
+		<div id="dialog-refresh" title="Refreshing Containers">
+			<p>
+				<span class="ui-icon ui-icon-circle-check" style="float:left; margin:0 7px 50px 0;"></span>
+				Refresing all the containters.
+			</p>
+		</div>
+		<div id="dialog-remove" title="Removing Containers">
+			<p>
+				<span class="ui-icon ui-icon-circle-check" style="float:left; margin:0 7px 50px 0;"></span>
+				Removing all the containters.
+			</p>
+		</div>
 	</body>
 </html>

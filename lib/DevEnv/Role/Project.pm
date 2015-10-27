@@ -61,6 +61,8 @@ sub _build_project_config {
 
         my $container_config = $config_hashref->{containers}{ $container_name };
 
+		$container_config->{name} = $container_name;
+
         # Set it as not enabled, and enabled it below
         $container_config->{enabled} = 0;
 

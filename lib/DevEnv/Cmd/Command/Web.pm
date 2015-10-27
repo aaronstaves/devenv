@@ -57,7 +57,8 @@ after 'execute' => sub {
 			instance_name => $self->instance
 		);
 
-		my $web = DevEnv::Web->new( $devenv->main_config->{web}{port} // 6000 );
+		my $web = DevEnv::Web->new();
+		$web->port( $devenv->main_config->{web}{port} // 6000  );
 		$web->instance_name( $self->instance );
 		$web->port_offset(   $self->port_offset );
 		$web->run();

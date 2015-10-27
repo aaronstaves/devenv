@@ -51,13 +51,15 @@ sub _container_order {
 	my $self = shift;
 	my %args = @_;
 
+	my $ignore_enabled = $args{ignore_enabled} // 0;
+
 	my $scoreboard = undef;
 
 	foreach my $container_name ( keys %{$self->project_config->{containers}} ) {
 
 		my $container_config = $self->project_config->{containers}{ $container_name };
 
-		next if ( not $container_config->{enabled} );
+		next if ( not $container_config->{enabled} and not $ignore_enabled );
 
 		# Always start the data container first
 		if ( $container_config->{type} eq "data" ) {
@@ -85,6 +87,8 @@ sub _container_order {
 				$self->project_config->{containers}{ $link }{enabled} = 1;
 			}
 		}
+
+		$container_config->{rank_order} = $scoreboard->{ $container_name };
 	}
 
 	my @containers = sort { $scoreboard->{$b} <=> $scoreboard->{$a} } keys %{$scoreboard};
@@ -228,6 +232,8 @@ sub start {
 				$images = $self->control->images;
 			}
 
+			print STDERR Dumper( $images );
+
 			if ( not defined $images->{ $image_name } ) {
 
 				$self->debug( "Image $container_name does not exist. Find or build it" );
@@ -346,14 +352,13 @@ sub stop {
 	my $images = $self->control->images;
 	
 	my @container_order = $self->_container_order(
-		containers => $args{containers},
-		foreground => $args{foreground}
+		ignore_enabled => 1
 	);
 
 	$self->debug( "Containter Order = " . join ( ", ", @container_order ) );
 
 	# Get the order that the containers should be started
-	while ( my $container_name = shift @container_order ) {
+	foreach my $container_name ( reverse @container_order ) {
 
 		my $config = $self->project_config->{containers}{ $container_name };
 
@@ -385,18 +390,15 @@ sub remove {
 	my $images = $self->control->images;
 	
 	my @container_order = $self->_container_order(
-		containers => $args{containers},
-		foreground => $args{foreground}
+		ignore_enabled => 1
 	);
 
 	$self->debug( "Containter Order = " . join ( ", ", @container_order ) );
 
 	# Get the order that the containers should be started
-	while ( my $container_name = shift @container_order ) {
+	foreach my $container_name ( reverse @container_order ) {
 
 		my $config = $self->project_config->{containers}{ $container_name };
-
-		next if ( not $config->{enabled} );
 
 		# Only remove the data container if forced
 		next if ( $config->{type} eq "data" and not $force );
@@ -411,6 +413,21 @@ sub remove {
 
 		$self->control->command( command => \@command );
 	}
+}
+
+sub log {
+	
+	my $self = shift;
+	my %args = @_;
+
+	my $container_name = $args{container_name};
+
+	my @command = (
+		"logs",
+		$container_name
+	);
+
+	return $self->control->run( command => \@command );
 }
 
 sub build {
@@ -431,16 +448,84 @@ sub build {
 	system "cd $makefile_dir; $PARAMS make";
 }
 
-sub containers {
+sub status {
 
 	my $self = shift;
 	my %args  = @_;
 
 	my $all_containers = $args{all} // 1;
 
-	my $ps = $self->control->ps;
+	my $ps     = $self->control->ps();
+	my $images = $self->control->images();
 
-	
+	my @container_order = $self->_container_order(
+		ignore_enabled => 1
+	);
+
+
+	my $is_running = 1;
+	my $num_containers = 0;
+	my $running_containers = 0;
+	foreach my $container_name ( @container_order ) {
+
+		my $instance_name = $self->_instance_name( $container_name );
+		my $container_config = $self->project_config->{containers}{ $container_name };
+
+		next if ( not $container_config->{enabled} or $container_config->{type} eq "data" );
+
+		$num_containers++;
+
+		my $container_ps = $ps->{ $instance_name };
+
+		if ( defined $container_ps ) {
+
+			if ( $container_ps->{status} !~ m/^Up/ ) {
+				$is_running = 0;
+			}
+			else {
+				$running_containers++;
+			}
+		}
+	}
+
+	my $status = {
+		is_running         => ( $running_containers > 0 and $is_running ),
+		num_containers     => $num_containers,
+		running_containers => $running_containers,
+		is_error           => ( $running_containers != 0 and $num_containers != $running_containers )?1:0,
+	};
+
+	foreach my $container_name ( @container_order ) {
+
+		my $instance_name = $self->_instance_name( $container_name );
+
+		my $container_config = $self->project_config->{containers}{ $container_name };
+		my $container_ps     = $ps->{ $instance_name };
+
+		push @{$status->{containers}}, {
+			status => {
+				error => (
+					$container_config->{type} ne "data" and 
+					$container_config->{enabled} and 
+					$is_running and 
+					defined $container_ps and
+					$container_ps->{status} !~ m/^Up/
+				)?1:0,
+				is_running => ( defined $container_ps and $container_ps->{status} =~ m/^Up/)?1:0,
+			},
+			config => $container_config,
+			ps     => $container_ps,
+			image  => $images->{ $self->_image_name( container_name => $container_name ) }
+		};
+	}
+
+	@{$status->{containers}} = sort {
+		$b->{config}{enabled} <=> $a->{config}{enabled} || 
+			$b->{config}{rank_order} <=> $a->{config}{rank_order} ||
+			$a->{config}{name} cmp $b->{config}{name}
+	} @{$status->{containers}};
+
+	return $status;
 }
 
 __PACKAGE__->meta->make_immutable;

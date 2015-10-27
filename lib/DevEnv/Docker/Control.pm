@@ -178,7 +178,7 @@ sub pull {
 		my @cmd = (
 			$self->docker,
 			"pull",
-			"$registries/$image_name"
+			"$registry/$image_name"
 		);
 
 		my ( $stdout, $stderr );
@@ -217,6 +217,28 @@ sub status {
 
 	return JSOX::XS->new->decode( $stdout );
 }
+
+sub run {
+
+	my $self = shift;
+	my %args = @_;
+
+	my ( $stdout, $stderr );
+	my $command = $args{command} // [];
+
+	my @cmd = (
+		$self->docker,
+		@{$command}
+	);
+
+	IPC::Run::run
+		\@cmd, 
+		'>',  \$stdout,
+		'2>', \$stderr;
+
+	return $stdout;
+}
+
 
 sub command {
 
