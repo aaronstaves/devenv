@@ -1,5 +1,4 @@
 local/
 *.swp
 .prove
-Makefile
 Makefile.old
