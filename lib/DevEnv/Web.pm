@@ -11,7 +11,7 @@ use Template;
 use Try::Tiny;
 use JSON::XS;
 use Net::Address::IP::Local;
-use HTML::Escape qw/escape_html/;
+use HTML::Entities;
 
 has 'config_file' => (
 	isa     => 'Str',
@@ -260,7 +260,7 @@ sub _page_log {
 
 	my $container_name = $cgi->param( "container_name" );
 
-	my $log = escape_html(
+	my $log = encode_entities(
 		$self->_docker()->log(
 			container_name => $container_name
 		)

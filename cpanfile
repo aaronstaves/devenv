@@ -18,4 +18,5 @@ requires 'Module::Find';
 requires 'File::Copy::Recursive';
 requires 'JSON::XS';
 requires 'Net::Address::IP::Local';
-requires 'HTML::Escape';
+requires 'HTML::Entities';
+

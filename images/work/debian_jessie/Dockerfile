@@ -35,6 +35,7 @@ RUN apt-get -qqy install iputils-ping
 RUN apt-get -qqy install dh-make
 RUN apt-get -qqy install carton
 RUN apt-get -qqy install telnet
+RUN apt-get -qqy install sudo
 
 RUN apt-get -qqy install tmux
 RUN apt-get -qqy install screen

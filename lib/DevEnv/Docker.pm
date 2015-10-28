@@ -78,8 +78,9 @@ sub _container_order {
 		$scoreboard->{ $container_name } //= 0;
 
 		# Increase the score of the container that is link required for this one
-		if ( defined $container_config->{link} and ref $container_config->{link} eq "ARRAY" ) {
-			foreach my $link ( @{$container_config->{link}} ) {
+		if ( defined $container_config->{links} and ref $container_config->{links} eq "ARRAY" ) {
+
+			foreach my $link ( @{$container_config->{links}} ) {
 
 				$scoreboard->{ $link }++;
 	
@@ -90,6 +91,8 @@ sub _container_order {
 
 		$container_config->{rank_order} = $scoreboard->{ $container_name };
 	}
+
+	print STDERR Dumper( $scoreboard );
 
 	my @containers = sort { $scoreboard->{$b} <=> $scoreboard->{$a} } keys %{$scoreboard};
 
@@ -339,6 +342,9 @@ sub start {
 		}
 	
 		$self->control->command( command => \@command );
+
+		# Let the containter start
+		sleep 3;
 	}
 }
 
