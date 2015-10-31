@@ -2,11 +2,12 @@
 
 /usr/local/bin/default_env.sh
 
-groupadd -g $DEVENV_MY_GID dev
-useradd -l -d /data/home/dev -s /bin/bash -m -g $DEVENV_MY_GID -u $DEVENV_MY_UID dev
-echo "dev:dev" | chpasswd
+export 
 
-chown -R dev:dev /data
+echo "UID = $DEVENV_MY_UID"
+echo "GID = $DEVENV_MY_GID"
+
+chown -R $DEVENV_MY_UID:$DEVENV_MY_GID /data
 
 # 0
 false

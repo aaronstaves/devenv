@@ -20,4 +20,5 @@ RUN rm /tmp/perl-build.tgz
 VOLUME [ "/data", "/var/log" ]
 
 ADD scripts/startup.sh /usr/local/bin/startup.sh
+RUN chmod 700 /usr/local/bin/startup.sh
 CMD /usr/local/bin/startup.sh

@@ -9,7 +9,7 @@
 				background-color: #34495e;
 				color: #ffffff;
 				padding: 5px;
-				font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+				font-family: "Lucida Console", Monaco, "Courier New", Courier, monospace;
 			}
 
 		</style>

@@ -266,6 +266,7 @@ sub _page_log {
 		)
 	);
 	$log =~ s/\n/<br\/>/g;
+	$log =~ s/\t/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/g;
 
 	$self->_ok(
 		cgi      => $cgi,

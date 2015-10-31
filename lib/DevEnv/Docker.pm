@@ -92,8 +92,6 @@ sub _container_order {
 		$container_config->{rank_order} = $scoreboard->{ $container_name };
 	}
 
-	print STDERR Dumper( $scoreboard );
-
 	my @containers = sort { $scoreboard->{$b} <=> $scoreboard->{$a} } keys %{$scoreboard};
 
 	return wantarray ? @containers : \@containers;
@@ -234,8 +232,6 @@ sub start {
 				
 				$images = $self->control->images;
 			}
-
-			print STDERR Dumper( $images );
 
 			if ( not defined $images->{ $image_name } ) {
 
