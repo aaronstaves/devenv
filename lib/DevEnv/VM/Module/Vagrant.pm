@@ -275,10 +275,39 @@ sub _copy_devenv_to_vagrant {
 	# We are going to use the config created for the instance. Remove the old config directory
 	# and copy the instance config.
 	remove_tree $self->external_temp_dir->subdir( "devenv", "config" )->stringify;
+	
+	# Only copy the images we need. They might be in different locations
+	remove_tree $self->external_temp_dir->subdir( "devenv", "images" )->stringify;
+
+	# Copy the INC directory
+	dircopy (
+		$self->base_dir->subdir( "images", "INC" ),
+		$self->external_temp_dir->subdir( "devenv", "images", "INC" )
+	);
+
+	# Copy the image src directories to the docker image
+	my $docker = DevEnv::Docker->new(
+		instance_name => $self->instance_name,
+	);
+	foreach my $container_name ( keys %{$self->project_config->{containers}} ) {
+
+		my $config = $self->project_config->{containers}{ $container_name };
+
+		my $use_makefile_dir = $docker->find_image_src(
+			type  => $config->{type},
+			image => $config->{image},
+		);
+
+		dircopy (
+			$use_makefile_dir,
+			$self->external_temp_dir->subdir( "devenv", "images", $config->{type}, $config->{image} )
+		);
+	}
+
 
 	make_path $self->external_temp_dir->subdir( "devenv" )->subdir( "config", "main" )->stringify;
 
-	my $project_config = clone( $self->project_config() );
+	my $project_config = clone( $self->project_config );
 
 	# Since we are not dealing with a VM, remove the VM config section
 	delete $project_config->{vm};

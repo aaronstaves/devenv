@@ -449,6 +449,34 @@ sub log {
 	return $self->control->run( command => \@command );
 }
 
+sub find_image_src {
+
+	my $self = shift;
+	my %args = @_;
+
+	my $type  = $args{type};
+	my $image = $args{image};
+
+	my $use_makefile_dir = undef;
+
+	foreach my $image_dir ( $self->all_image_dirs ) {
+
+		my $makefile_dir = $image_dir->subdir( $type, $image );
+
+		if ( -d $makefile_dir->stringify() ) {
+
+			$use_makefile_dir = $makefile_dir;
+			last;
+		}
+	}	
+
+	if ( not defined $use_makefile_dir ) {
+		DevEnv::Exception->throw( "Cannot find image $type/$image" ) ;
+	}
+
+	return $use_makefile_dir;
+}
+
 sub build {
 
 	my $self = shift;
@@ -458,23 +486,11 @@ sub build {
 
 	my $config = $self->project_config->{containers}{ $container_name };
 
-	my $use_makefile_dir = undef;
+	my $use_makefile_dir = $self->find_image_src(
+		type  => $config->{type},
+		image => $config->{image}
+	);
 
-	foreach my $image_dir ( $self->all_image_dirs ) {
-
-		my $makefile_dir = $image_dir->subdir( $config->{type}, $config->{image} )->stringify();
-
-		if ( -d $makefile_dir ) {
-			$use_makefile_dir = $makefile_dir;
-			last;
-		}
-	}	
-
-	if ( not defined $use_makefile_dir ) {
-		DevEnv::Exception->throw( sprintf( "Cannot find image %s/%s", $config->{type}, $config->{image} ) );
-	}
-			
-	
 	$self->debug( "Build image with Makefile at $use_makefile_dir" );
 
 	my $PARAMS="";

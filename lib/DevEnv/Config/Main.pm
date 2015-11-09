@@ -39,7 +39,7 @@ sub _build_config_dirs {
 	my @dirs = ();
 
 	if ( defined $ENV{DEVENV_CONFIG_DIR} ) {
-		push @dirs, dir( $ENV{DEVENV_CONFIG_DIR}, "config" );
+		push @dirs, dir( $ENV{DEVENV_CONFIG_DIR} );
 	}
 
 	push @dirs, dir( $ENV{HOME}, ".devenv", "config" );
