@@ -8,6 +8,11 @@ groupadd -g $DEVENV_MY_GID dev
 useradd -l -d /home/dev -s /bin/bash -M -g $DEVENV_MY_GID -u $DEVENV_MY_UID dev
 echo "dev:dev" | chpasswd
 
+if [ ! -d "/data/work" ]; then
+	mkdir -p /data/work
+	chown dev:dev -R /data/work
+fi
+
 service samba start
 
 sleep 4;

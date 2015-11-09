@@ -6,15 +6,14 @@ groupadd -g $DEVENV_MY_GID dev
 useradd -l -d /data/home/dev -s /bin/bash -m -g $DEVENV_MY_GID -u $DEVENV_MY_UID dev
 echo "dev:dev" | chpasswd
 
+mkdir -p /var/run/postgresql/9.4
+chown -R postgres:postgres /var/run/postgresql
+
+mkdir -p /var/log/db/postgresql/9.4
+chown -R postgres:postgres /var/log/db/postgresql
+
 # check if postgresql has NOT been setup
 if [ ! -d "$DATA_DIR" ]; then
-
-	mkdir -p /var/run/postgresql/9.4
-	chown -R postgres:postgres /var/run/postgresql
-
-	# /var/log is shared via the data container, so append db in path
-	mkdir -p /var/log/db/postgresql/9.4
-	chown -R postgres:postgres /var/log/db/postgresql
 
 	mkdir -p $DATA_DIR
 	chown -R postgres:postgres $DATA_DIR
@@ -74,6 +73,10 @@ if [ ! -d "$DATA_DIR" ]; then
 	su - postgres -c "/usr/lib/postgresql/9.4/bin/pg_ctl -D $DATA_DIR stop"
 
 	sleep 5
+else
+
+	chown -R postgres:postgres $DATA_DIR
+	chmod -R 700 $DATA_DIR
 fi
 
 su - postgres -c "/usr/lib/postgresql/9.4/bin/postgres -D $DATA_DIR"

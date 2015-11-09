@@ -14,6 +14,7 @@ cp /tmp/rabbitmq.config /data/etc/mq/rabbitmq/rabbitmq.config
 
 rm -f /etc/rabbitmq/rabbitmq.config
 ln -sf /data/etc/mq/rabbitmq/rabbitmq.config  /etc/rabbitmq/rabbitmq.config
+chmod -R a+xwr /data/var/mq/rabbitmq
 
 if [ ! -d /data/var/mq/rabbitmq ]; then
 

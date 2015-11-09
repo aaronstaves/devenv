@@ -10,7 +10,10 @@ groupadd -g $DEVENV_MY_GID dev
 useradd -l -d /home/dev -s /bin/bash -M -g $DEVENV_MY_GID -u $DEVENV_MY_UID dev
 echo "dev:dev" | chpasswd
 
-chown dev:dev -R /data
+if [ ! -d "/data/work" ]; then
+	mkdir -p /data/work
+	chown dev:dev -R /data/work
+fi
 
 if [ ! -f "/data/home/dev/.bashrc" ]; then
 
