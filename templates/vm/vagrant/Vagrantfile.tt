@@ -70,6 +70,10 @@ $script = <<SCRIPT
 	/etc/init.d/hostname.sh  restart
 	/etc/init.d/avahi-daemon restart
 
+	. /etc/default/devenv
+
+	devenv web --start
+
 SCRIPT
 
 Vagrant.configure(2) do |config|

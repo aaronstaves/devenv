@@ -92,11 +92,11 @@ after 'execute' => sub {
 
 		DevEnv::VM->global_status();
 	}
-	else {
+	elsif ( $self->start or $self->stop or $self->build or $self->remove or $self->connect ) {
 
 		my $vm = DevEnv::VM->new(
 			project_config_file => $self->config_file,
-			instance_name       => $self->instance,
+			instance_name       => $self->instance // "default",
 			verbose             => $self->verbose
 		);
 
@@ -112,18 +112,14 @@ after 'execute' => sub {
 		}
 		elsif ( $self->remove ) {
 
-			$vm->remove(   );
+			$vm->remove();
 		}
 		elsif ( $self->build ) {
 
-			$vm->build(   );
+			$vm->build();
 		}
 		elsif ( $self->connect ) {
 			$vm->connect();
-		}
-		else {
-
-			
 		}
 	}
 };

@@ -7,8 +7,6 @@ with 'DevEnv::Role::Project';
 use Path::Class;
 use Template;
 
-use Data::Dumper;
-
 has 'vm_dir' => (
 	is      => 'ro',
 	isa     => 'Path::Class::Dir',
@@ -82,14 +80,16 @@ sub get_avahi_service_files {
 
 	# Always include the control panel service
 	my @avahi_files = (
-		name => 'devenv_cp',
-		file => $self->avahi_service(
-			box_name => $self->instance_name,
-			name     => "Control Panel",
-			type     => "http",
-			port     => $self->project_config->{web}{port} // 5999,
-			protocal => "tcp"
-		)
+		{
+			name => 'devenv_cp.service',
+			file => $self->avahi_service(
+				box_name => $self->instance_name,
+				name     => "Control Panel",
+				type     => "http",
+				port     => $self->project_config->{web}{port} // 5999,
+				protocal => "tcp"
+			)
+		}
 	);
 
 	foreach my $container_name ( keys %{$self->project_config->{containers}} ) {

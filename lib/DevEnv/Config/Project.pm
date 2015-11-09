@@ -52,13 +52,12 @@ sub _build_config_dirs {
 	my @dirs = ();
 
 	if ( defined $ENV{DEVENV_CONFIG_DIR} ) {
-		push @dirs, dir( $ENV{DEVENV_CONFIG_DIR} );
+		push @dirs, dir( $ENV{DEVENV_CONFIG_DIR}, "config" );
 	}
-	else {
-		push @dirs, dir( $ENV{HOME}, ".devenv", "config" );
-		push @dirs, dir( $self->base_dir, "config"  );
-		push @dirs, dir( "opt", "devenv", "config" );
-	}
+
+	push @dirs, dir( $ENV{HOME}, ".devenv", "config" );
+	push @dirs, dir( $self->base_dir, "config"  );
+	push @dirs, dir( "opt", "devenv", "config" );
 
 	return \@dirs;
 }

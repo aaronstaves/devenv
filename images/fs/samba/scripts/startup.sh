@@ -1,12 +1,17 @@
 #!/usr/bin/env bash
 
-# Add the user, so we can log in
-useradd -l -d /data/home/dev -s /bin/bash -M -g $(cat /tmp/mygroup) -u $(cat /tmp/myid) dev
+/usr/local/bin/default_env.sh
+
+# dev's home directory is actually a shared folder in the docker. Don't actually
+# make the home directory ( -M )
+groupadd -g $DEVENV_MY_GID dev
+useradd -l -d /home/dev -s /bin/bash -M -g $DEVENV_MY_GID -u $DEVENV_MY_UID dev
 echo "dev:dev" | chpasswd
 
-echo -ne "dev\ndev\n" | smbpasswd -s -c /etc/samba/smb.conf -a dev
-
 service samba start
+
+sleep 4;
+echo -ne "dev\ndev\n" | smbpasswd -s -c /etc/samba/smb.conf -a dev
 
 # Tail this forever! :)
 tail -f /etc/samba/smb.conf

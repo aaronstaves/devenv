@@ -31,10 +31,11 @@
 			.container {}
 
 			.enabled  { width: 10%; padding: 5px; border-bottom: 1px solid #afafaf; }
+			.image    { width: 10%; padding: 5px; border-bottom: 1px solid #afafaf; }
 			.name     { width: 10%; padding: 5px; border-bottom: 1px solid #afafaf; }
 			.desc     { width: 20%; padding: 5px; border-bottom: 1px solid #afafaf; }
 			.status   { width: 20%; padding: 5px; border-bottom: 1px solid #afafaf; }
-			.services { width: 30%; padding: 5px; border-bottom: 1px solid #afafaf; }
+			.services { width: 40%; padding: 5px; border-bottom: 1px solid #afafaf; }
 			.log      { width: 10%; padding: 5px; border-bottom: 1px solid #afafaf; }
 
 			a {
@@ -47,6 +48,8 @@
 		<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.11.4/jquery-ui.min.js"></script>
 		<script src=""></script>
 		<script>
+
+			var last_status = null;
 
 			$(document).ready( function() {
 	
@@ -103,27 +106,15 @@
 					$("#b_refresh").click(
 						function() {
 
-							var containers="";
-							$(".containers:checked").each(function() 
-							{
-								containers += $(this).val()+",";
-							});
+							$( "#dialog_refresh" ).dialog( "open" );
 
-							$.ajax(
-								{
-									url: "/action_refresh?containers=" + containers,
-									success: function( data ) {
-
-										set_status ( data );
-										render_containers( data.containers );
-									}
-								}
-							);
 						}
 					);
 
 					$("#b_remove").click(
 						function() {
+
+							$( "#dialog_remove" ).dialog( "open" );
 
 							$.ajax(
 								{
@@ -132,6 +123,8 @@
 
 										set_status ( data );
 										render_containers( data.containers );
+
+										$( "#dialog-remove" ).dialog( "close" );
 									}
 								}
 							);
@@ -157,16 +150,51 @@
 					);
 
 					$("#dialog-start").dialog({
+						modal: true,
 						autoOpen: false
 					});
 					$("#dialog-stop").dialog({
+						modal: true,
 						autoOpen: false
 					});
 					$("#dialog-refresh").dialog({
+						modal: true,
 						autoOpen: false
 					});
 					$("#dialog-remove").dialog({
-						autoOpen: false
+						modal: true,
+						autoOpen: false,
+  						buttons: [ 
+							{
+								text: "OK",
+								click: function () {
+									var containers="";
+									$(".containers:checked").each(function() 
+									{
+										containers += $(this).val()+",";
+									});
+
+									$.ajax(
+										{
+											url: "/action_refresh?containers=" + containers,
+											success: function( data ) {
+
+												set_status ( data );
+												render_containers( data.containers );
+
+												$( "#dialog-refresh" ).dialog( "close" );
+											}
+										}
+									);
+								}
+							},
+							{
+								text: "Nope",
+								click : function () {
+									$( "#dialog-refresh" ).dialog( "close" );
+								}
+							}
+               			]
 					});
 
 					get_containers();
@@ -201,6 +229,8 @@
 				$("#status").empty();
 				$("#status").append( status );
 				window.status = status;
+
+				last_status = data;
 			}
 
 			function _add_container_info( container ) {
@@ -280,6 +310,7 @@
 							( container.config.required?"Yes":"<input class='containers' name='containers' type='checkbox' multiple value='" + container.config.name + "'" +
 								( container.config.enabled?"checked":"" ) + "> " ) +
 						"</td>" +
+						"<td class='image'>" + (container.image?"Yes":"No") + "</td>" +
 						"<td class='name'>" + container.config.name + "</td>" +
 						"<td class='desc'>" + container.config.description + "</td>" +
 						"<td class='status'>" + ( container.ps?container.ps.status:"" ) + "</td>" +
@@ -299,6 +330,7 @@
 
 					"<tr class='header'>" +
 						"<td class='enabled'>Enabled</td>" +
+						"<td class='image'>Image</td>" +
 						"<td class='name'>Name</td>" +
 						"<td class='desc'>Description</td>" +
 						"<td class='status'>Status</td>" +
@@ -343,7 +375,7 @@
 		<div id="dialog-start" title="Starting Containers">
 			<p>
 				<span class="ui-icon ui-icon-circle-check" style="float:left; margin:0 7px 50px 0;"></span>
-				Starting the containers
+				Starting the containers.
 			</p>
 		</div>
 		<div id="dialog-stop" title="Stopping Containers">
@@ -355,13 +387,13 @@
 		<div id="dialog-refresh" title="Refreshing Containers">
 			<p>
 				<span class="ui-icon ui-icon-circle-check" style="float:left; margin:0 7px 50px 0;"></span>
-				Refresing all the containters.
+				Refresing all the containters, but NOT the data container.
 			</p>
 		</div>
 		<div id="dialog-remove" title="Removing Containers">
 			<p>
 				<span class="ui-icon ui-icon-circle-check" style="float:left; margin:0 7px 50px 0;"></span>
-				Removing all the containters.
+				Removing all the containters, including the data containers.
 			</p>
 		</div>
 	</body>

@@ -27,4 +27,6 @@ else
     echo ". /etc/default/devenv"     >> /data/home/dev/.profile
 fi
 
+echo "dev ALL=(ALL) NOPASSWD:ALL" > /etc/sudoers.d/devenv
+
 /usr/sbin/sshd -D

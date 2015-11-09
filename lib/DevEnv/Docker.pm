@@ -26,13 +26,30 @@ sub _build_control {
 	);
 }
 
-has 'image_dir' => (
+has 'image_dirs' => (
+	traits   => ['Array'],
 	is       => 'ro',
-	isa      => 'Path::Class::Dir',
+	isa      => 'ArrayRef[Path::Class::Dir]',
 	lazy     => 1,
-	builder  => '_build_image_dir',
+	builder  => '_build_image_dirs',
+	handles  => {
+		all_image_dirs => "elements"
+	}
 );
-sub _build_image_dir { return shift->base_dir->subdir( "images" ) }
+sub _build_image_dirs {
+
+	my $self = shift;
+
+	my @dirs = ();
+
+	if ( defined $ENV{DEVENV_IMAGE_DIR} ) {
+		push @dirs, dir ( $ENV{DEVENV_IMAGE_DIR} );
+	}
+	push @dirs, dir( $ENV{HOME}, ".devenv", "images" );
+	push @dirs, $self->base_dir->subdir( "images" );
+
+	return \@dirs;
+}
 
 has 'port_offset' => (
 	is      => 'ro',
@@ -441,13 +458,28 @@ sub build {
 
 	my $config = $self->project_config->{containers}{ $container_name };
 
-	my $makefile_dir = $self->image_dir->subdir( $config->{type}, $config->{image} );
+	my $use_makefile_dir = undef;
 
-	$self->debug( "Build image with Makefile at $makefile_dir" );
+	foreach my $image_dir ( $self->all_image_dirs ) {
+
+		my $makefile_dir = $image_dir->subdir( $config->{type}, $config->{image} )->stringify();
+
+		if ( -d $makefile_dir ) {
+			$use_makefile_dir = $makefile_dir;
+			last;
+		}
+	}	
+
+	if ( not defined $use_makefile_dir ) {
+		DevEnv::Exception->throw( sprintf( "Cannot find image %s/%s", $config->{type}, $config->{image} ) );
+	}
+			
+	
+	$self->debug( "Build image with Makefile at $use_makefile_dir" );
 
 	my $PARAMS="";
 
-	system "cd $makefile_dir; $PARAMS make";
+	system "cd $use_makefile_dir; $PARAMS make";
 }
 
 sub status {

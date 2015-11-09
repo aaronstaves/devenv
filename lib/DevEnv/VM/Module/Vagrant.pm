@@ -17,8 +17,6 @@ use File::Copy::Recursive qw/fcopy rcopy dircopy fmove rmove dirmove/;
 use Template;
 use Clone qw/clone/;
 
-use Data::Dumper;
-
 our $VAGRANT_FILE_NAME = "vagrant";
 
 has 'vagrant_file_name' => (

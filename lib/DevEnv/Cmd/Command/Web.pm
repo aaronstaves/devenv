@@ -58,10 +58,10 @@ after 'execute' => sub {
 		);
 
 		my $web = DevEnv::Web->new();
-		$web->port( $devenv->main_config->{web}{port} // 6000  );
+		$web->port( $devenv->main_config->{web}{port} // 5999 );
 		$web->instance_name( $self->instance );
 		$web->port_offset(   $self->port_offset );
-		$web->run();
+		$web->background();
 	}
 };
 

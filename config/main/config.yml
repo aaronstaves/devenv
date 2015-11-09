@@ -9,7 +9,7 @@ vm:
       provider: virtualbox
       server_url:
 web:
-  port: 6000
+  port: 5999
   bonjour: 1
 docker:
   registry:
