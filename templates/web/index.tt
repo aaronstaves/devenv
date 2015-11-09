@@ -106,7 +106,30 @@
 					$("#b_refresh").click(
 						function() {
 
-							$( "#dialog_refresh" ).dialog( "open" );
+							$( "#dialog-refresh" ).dialog( "open" );
+
+							var containers="";
+							$(".containers:checked").each(function() 
+							{
+								containers += $(this).val()+",";
+							});
+
+							$.ajax(
+								{
+									url: "/action_refresh?containers=" + containers,
+									success: function( data ) {
+
+										set_status ( data );
+										render_containers( data.containers );
+
+										$( "#dialog-refresh" ).dialog( "close" );
+									},
+									error : function( data ) {
+
+										$( "#dialog-refresh" ).dialog( "close" );
+									}
+								}
+							);
 
 						}
 					);
@@ -114,20 +137,7 @@
 					$("#b_remove").click(
 						function() {
 
-							$( "#dialog_remove" ).dialog( "open" );
-
-							$.ajax(
-								{
-									url: "/action_remove",
-									success: function( data ) {
-
-										set_status ( data );
-										render_containers( data.containers );
-
-										$( "#dialog-remove" ).dialog( "close" );
-									}
-								}
-							);
+							$( "#dialog-remove" ).dialog( "open" );
 						}
 					);
 
@@ -176,13 +186,13 @@
 
 									$.ajax(
 										{
-											url: "/action_refresh?containers=" + containers,
+											url: "/action_remove?containers=" + containers,
 											success: function( data ) {
 
 												set_status ( data );
 												render_containers( data.containers );
 
-												$( "#dialog-refresh" ).dialog( "close" );
+												$( "#dialog-remove" ).dialog( "close" );
 											}
 										}
 									);
@@ -191,7 +201,7 @@
 							{
 								text: "Nope",
 								click : function () {
-									$( "#dialog-refresh" ).dialog( "close" );
+									$( "#dialog-remove" ).dialog( "close" );
 								}
 							}
                			]
