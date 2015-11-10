@@ -24,7 +24,7 @@ $script = <<SCRIPT
 		
 		[% UNLESS home_dir %]
 		mkdir -p /home/dev
-		groupadd -g [% gid %] dev
+		groupadd -g 2000 dev
 		useradd -l -d /home/dev -s /bin/bash -M -g 2000 -u 200 dev
 		echo "dev:dev" | chpasswd
 		usermod -a -G vagrant dev
@@ -62,17 +62,15 @@ $script = <<SCRIPT
 
 		echo ". /etc/default/devenv" >> /home/vagrant/.profile
 
-		touch /etc/default/devenv
-		
+		chmod a+rx /opt/devenv/etc/init.d/devenv
+
 		echo "PROVISION END"
 	fi
 
-	/etc/init.d/hostname.sh  restart
-	/etc/init.d/avahi-daemon restart
+	/etc/init.d/hostname.sh       restart
+	/etc/init.d/avahi-daemon      restart
+	/opt/devenv/etc/init.d/devenv start
 
-	. /etc/default/devenv
-
-	bash -c ". /etc/default/devenv && devenv web --start"
 
 SCRIPT
 

@@ -61,7 +61,7 @@ after 'execute' => sub {
 		$web->port( $devenv->main_config->{web}{port} // 5999 );
 		$web->instance_name( $self->instance );
 		$web->port_offset(   $self->port_offset );
-		$web->background();
+		$web->run();
 	}
 };
 

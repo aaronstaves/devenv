@@ -5,7 +5,10 @@ extends 'DevEnv';
 with 'DevEnv::Role::Project';
 
 use Path::Class;
+use File::Basename;
+use File::Path qw/make_path/;
 use Template;
+use Data::Dumper;
 
 has 'vm_dir' => (
 	is      => 'ro',
@@ -37,6 +40,53 @@ sub _build_temp_dir {
 	return $dir;
 }
 
+sub process_template {
+
+	my $self = shift;
+	my %args = @_;
+
+	my $template_file = $args{template_file};
+	my $vars          = $args{vars} // {};
+
+    my $inc_path = sprintf( "%s/templates/", $self->base_dir );
+
+    my $tt = Template->new(
+        INCLUDE_PATH => $inc_path
+    );
+
+    my $text = "";
+    $tt->process( $template_file, $vars, \$text )
+        or DevEnv::Exception::VM->throw( "Could not generate $template_file file: " . $tt->error . "." );
+
+    return $text;
+}
+
+sub copy_template {
+
+	my $self = shift;
+	my %args = @_;
+
+	my $template_file = $args{template_file};
+	my $dst_file      = $args{dst_file};
+	my $vars          = $args{vars};
+
+	my $text = $self->process_template(
+		template_file => $template_file,
+		vars          => $vars
+	);
+
+	# Make sure the path to the dest file exists
+	my ( $name, $path, $suffix ) = fileparse( "$dst_file" );
+	make_path $path;
+
+	# Save the text
+	open my $fh, ">", "$dst_file";
+	print $fh $text;
+	close $fh;
+
+	return $text;
+}
+
 sub avahi_service {
 
 	my $self = shift;
@@ -61,17 +111,10 @@ sub avahi_service {
 		push @{$vars->{records}}, "model=Xserve";
 	}
 
-	my $inc_path = sprintf( "%s/templates/avahi/", $self->base_dir() );
-
-	my $tt = Template->new(
-		INCLUDE_PATH => $inc_path
+	return $self->process_template(
+		template_file => "avahi/generic.tt",
+		vars          => $vars
 	);
-
-	my $service_text = "";
-	$tt->process( "generic.tt", $vars, \$service_text )
-		or DevEnv::Exception::VM->throw( "Could not generate generic avahi file: " . $tt->error . "." );
-
-	return $service_text;
 }
 
 sub get_avahi_service_files {

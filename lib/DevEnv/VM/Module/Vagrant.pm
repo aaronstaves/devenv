@@ -14,7 +14,6 @@ use File::Which;
 use File::Copy;
 use File::Path qw/make_path remove_tree/;
 use File::Copy::Recursive qw/fcopy rcopy dircopy fmove rmove dirmove/;
-use Template;
 use Clone qw/clone/;
 
 our $VAGRANT_FILE_NAME = "vagrant";
@@ -387,23 +386,19 @@ override 'build' => sub {
 
 	$self->_copy_devenv_to_vagrant();
 
-	my $inc_path = sprintf( "%s/templates/vm/vagrant/", $self->base_dir() );
-
-	$self->debug( "Template include path is $inc_path" );
-
-	my $tt = Template->new(
-		INCLUDE_PATH => $inc_path
+	# Copy the init to /opt/devenv/etc/init.d/devenv
+	$self->copy_template(
+		template_file => "init.d/devenv.tt",
+		dst_file      => $self->external_temp_dir->subdir( "devenv" )->subdir( "etc", "init.d", "devenv" ),
+		vars          => $vars
 	);
 
-	my $vagrantfile_text = "";
-	$tt->process( "Vagrantfile.tt", $vars, \$vagrantfile_text )
-		or DevEnv::Exception::VM->throw( "Cannot process the Vagrantfile.tt: " . $tt->error . "." );
-
-	open my $fh, ">", sprintf ( "%s/Vagrantfile", $self->instance_dir )
-		or DevEnv::Exception::VM->throw( "Could not write Vagrantfile to VM directory " . $self->instance_dir . "." );
-
-	print $fh $vagrantfile_text;
-	close $fh;
+	# Copy the Vagrant template to the instance directory
+	$self->copy_template(
+		template_file => "vm/vagrant/Vagrantfile.tt",
+		dst_file      => $self->instance_dir->file( "Vagrantfile" ),
+		vars          => $vars
+	);
 
     DevEnv::Config::Project->instance->instance_config_write(
         config => $self->project_config,
