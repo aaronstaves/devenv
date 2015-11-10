@@ -1,5 +1,9 @@
 #!/usr/bin/env bash
 
+if [ -r "/etc/default/devenv" ]; then
+  . /etc/default/devenv
+fi
+
 DEST=$1
 if [ -z "$DEST" ]; then
 

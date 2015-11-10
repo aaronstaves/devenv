@@ -349,6 +349,7 @@ override 'build' => sub {
 		config_file       => $self->project_config_file,
 		internal_temp_dir => $self->internal_temp_dir->stringify,
 		services          => [],
+		user_home_dir     => "/home/dev"
 	};
 
 	if ( defined $self->project_config->{general}{home_dir} and $self->project_config->{general}{home_dir} ne "" ) {

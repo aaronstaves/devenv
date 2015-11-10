@@ -40,8 +40,8 @@ $script = <<SCRIPT
 		[% END %]
 
 		echo "export DEVENV_MY_HOME=/home/dev"         >> /etc/default/devenv
-		echo "export DEVENV_CONFIG_FILE=config.yml"    >> /etc/default/devenv
 		echo "export DEVENV_NAME=[% box_name %]"       >> /etc/default/devenv
+		echo "export DEVENV_CONFIG_FILE=config.yml"    >> /etc/default/devenv
 		echo "eval \\\$(/opt/devenv/bin/devenv init)"  >> /etc/default/devenv
 
 		[% FOREACH service IN services %]
