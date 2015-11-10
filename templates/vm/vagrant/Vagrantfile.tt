@@ -72,7 +72,7 @@ $script = <<SCRIPT
 
 	. /etc/default/devenv
 
-	devenv web --start
+	bash -c ". /etc/default/devenv && devenv web --start"
 
 SCRIPT
 

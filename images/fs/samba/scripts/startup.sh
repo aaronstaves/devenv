@@ -13,6 +13,9 @@ if [ ! -d "/data/work" ]; then
 	chown dev:dev -R /data/work
 fi
 
+mkdir -p /var/log/fs/samba/
+chmod 777 /var/log/fs/samba/
+
 service samba start
 
 sleep 4;
