@@ -16,6 +16,8 @@ use File::Path qw/make_path remove_tree/;
 use File::Copy::Recursive qw/fcopy rcopy dircopy fmove rmove dirmove/;
 use Clone qw/clone/;
 
+use Data::Dumper;
+
 our $VAGRANT_FILE_NAME = "vagrant";
 
 has 'vagrant_file_name' => (
@@ -349,7 +351,10 @@ override 'build' => sub {
 		config_file       => $self->project_config_file,
 		internal_temp_dir => $self->internal_temp_dir->stringify,
 		services          => [],
-		user_home_dir     => "/home/dev"
+		user_home_dir     => "/home/dev",
+
+		vm_memory         => $self->project_config->{vm}{module}{Vagrant}{system}{memory},
+		vm_cpus           => $self->project_config->{vm}{module}{Vagrant}{system}{cpus},
 	};
 
 	if ( defined $self->project_config->{general}{home_dir} and $self->project_config->{general}{home_dir} ne "" ) {

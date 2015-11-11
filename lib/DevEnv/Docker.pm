@@ -161,9 +161,10 @@ sub _env {
 	my ( $gid ) = split /\s/, $(;
 
 	my $env_hashref = {
-		DEVENV_MY_UID  => $self->user_id,
-		DEVENV_MY_GID  => $self->group_id,
-		DEVENV_MY_HOME => $self->home_dir,
+		DEVENV_MY_UID        => $self->user_id,
+		DEVENV_MY_GID        => $self->group_id,
+		DEVENV_MY_HOME       => $self->home_dir,
+		DEVENV_INSTANCE_NAME => $self->instance_name,
 	};
 
 	my $config = $self->project_config->{containers}{ $container_name };
