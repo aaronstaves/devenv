@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+echo "# default_env.sh"
+
 if [ -r "/etc/default/devenv" ]; then
   . /etc/default/devenv
 fi

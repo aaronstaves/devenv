@@ -17,7 +17,7 @@ ifdef MY_GID
 	echo $(MY_GID) > tmp/mygroup
 else
 #	id -g > tmp/mygroup
-	echo "5000" > tmp/mygroup
+	echo "1000" > tmp/mygroup
 endif
 
 clean:

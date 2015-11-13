@@ -1,27 +1,36 @@
 #!/usr/bin/env bash
 
+echo "=================";
+export
+echo "=================";
+
 SRC=$1
 DEST=$2
 
-cp "$1" /tmp/template_file.tt
+if [ ! -f "$SRC" ]; then
+	echo "Could not find $SRC template file"
+	exit 1;
+fi
+
+echo "# template.sh $SRC > $DEST"
+
+cp "$SRC" /tmp/_template_file.tt
 
 declare -A ENV
-REGEX="^DEVENV_"
 for e in $(env); do
-    if [[ $e =~ $REGEX ]]; then
-        clean=$(echo $e | cut -d "_" -f 2- )
-		name=$(echo $clean | cut -d "=" -f 1 )
-		value=$(echo $clean | cut -d "=" -f 2- )
-		
-		ENV[$name]="$value"
-    fi
+	name=$(echo $e | cut -d "=" -f 1 )
+	value=$(echo $e | cut -d "=" -f 2- )
+	
+	ENV[$name]="$value"
 done
 for name in "${!ENV[@]}"; do
+
+	#echo "# * $name = ${ENV[$name]}"
 	
 	match="\[% $name %\]"
 	value=${ENV[$name]}
 
-	sed -i -E "s/$match/$value/" /tmp/template_file.tt
+	sed -i -E "s#$match#$value#" /tmp/_template_file.tt
 done	
 
-mv /tmp/template_file.tt $DEST
+mv /tmp/_template_file.tt $DEST
