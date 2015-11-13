@@ -26,7 +26,7 @@ RUN apt-get -qqy --force-yes install \
 	postgresql-plperl-9.4
 
 # Allow DATA_DIR to be NFS mounted
-RUN apt-get -qqy nfs-common
+RUN apt-get -qqy install nfs-common
 
 ADD tmp/myid           /tmp/myid
 ADD tmp/mygroup        /tmp/mygroup
