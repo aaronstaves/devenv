@@ -1,8 +1,8 @@
 # FROM DOCKER
 
-data_directory    = '/data/var/db/postgresql/9.4/main'
-hba_file          = '/data/var/db/postgresql/9.4/main/pg_hba.conf'
-ident_file        = '/data/var/db/postgresql/9.4/main/pg_ident.conf'
+data_directory    = '[% DATA_DIR %]'
+hba_file          = '[% DATA_DIR %]/pg_hba.conf'
+ident_file        = '[% DATA_DIR %]/pg_ident.conf'
 
 external_pid_file = '/var/run/postgresql/9.4-main.pid'
 

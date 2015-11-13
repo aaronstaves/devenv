@@ -353,6 +353,9 @@ override 'build' => sub {
 		services          => [],
 		user_home_dir     => "/home/dev",
 
+		# What host path should be mounted in the VM
+		shares            => $self->project_config->{vm}{shares} // [],
+
 		vm_memory         => $self->project_config->{vm}{module}{Vagrant}{system}{memory},
 		vm_cpus           => $self->project_config->{vm}{module}{Vagrant}{system}{cpus},
 	};

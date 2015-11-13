@@ -25,15 +25,18 @@ RUN apt-get -qqy --force-yes install \
 	postgresql-server-dev-9.4 \
 	postgresql-plperl-9.4
 
+# Allow DATA_DIR to be NFS mounted
+RUN apt-get -qqy nfs-common
+
 ADD tmp/myid           /tmp/myid
 ADD tmp/mygroup        /tmp/mygroup
 ADD tmp/default_env.sh /usr/local/bin/default_env.sh
 ADD tmp/template.sh    /usr/local/bin/template.sh
 
-RUN mkdir -p /usr/local/share/db/postgresql/9.4
-COPY files/pg_hba.conf     /usr/local/share/postgresql/9.4/pg_hba.conf
-COPY files/postgresql.conf /usr/local/share/postgresql/9.4/postgresql.conf
+COPY files/pg_hba.conf.tt     /tmp/pg_hba.conf.tt
+COPY files/postgresql.conf.tt /tmp/postgresql.conf.tt
 
+# This is the default path. This can overridden via the project config.
 ENV DATA_DIR /data/var/db/postgresql/9.4/main
 
 EXPOSE 5432
