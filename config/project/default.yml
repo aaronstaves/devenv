@@ -68,7 +68,6 @@ containers:
         src_port: 445
         dst_port: 445/udp
       - name: Samba NetBIOS
-        type: smb
         src_port: 139
         dst_port: 139
       - name: Samba WINS

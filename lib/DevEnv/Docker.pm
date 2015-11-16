@@ -99,10 +99,9 @@ sub _container_order {
 
 			foreach my $link ( @{$container_config->{links}} ) {
 
+				next if ( not $self->project_config->{containers}{ $link }{enabled} );
+
 				$scoreboard->{ $link }++;
-	
-				# Make sure the contrainer is enabled since we are linking to it
-				$self->project_config->{containers}{ $link }{enabled} = 1;
 			}
 		}
 
@@ -320,6 +319,7 @@ sub start {
 
 			# Always mount the home directory in the work container
 			if ( $config->{type} eq "work" ) {
+
 				push @{$config->{shares}}, {
 					src_dir  => $self->home_dir,
 					dest_dir => "/home/dev"

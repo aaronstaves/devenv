@@ -24,11 +24,8 @@ if [ ! -d "$DATA_DIR" ]; then
 	ls -l $DATA_DIR
 
 	# Over-write pg_hba.conf
-	cp /usr/local/share/postgresql/9.4/pg_hba.conf $DATA_DIR
-
-
-	# Append config items on the bottom of postgresql.conf
-	cat /usr/local/share/postgresql/9.4/postgresql.conf >> $DATA_DIR/postgresql.conf
+	/usr/local/bin/template.sh /tmp/pg_hba.conf.tt $DATA_DIR/pg_hba.conf
+	/usr/local/bin/template.sh /tmp/postgresql.conf.tt $DATA_DIR/postgresql.conf
 
 	# Add the project search path to the config
 	echo "search_path = '${SLPENV_PG_SCHEMA_SEARCH}'" >> $DATA_DIR/postgresql.conf
@@ -45,32 +42,33 @@ if [ ! -d "$DATA_DIR" ]; then
 
 	sleep 10
 
+	echo " * add extension ... citext";
+	su - postgres -d template1 -c "psql --command \"CREATE EXTENSION citext;\""
+
+	echo " * add extension ... cube";
+	su - postgres -d template1 -c "psql --command \"CREATE EXTENSION cube;\""
+
+	echo " * add extension ... earthdistance";
+	su - postgres -d template1 -c "psql --command \"CREATE EXTENSION earthdistance;\""
+
+	echo " * add extension ... hstore";
+	su - postgres -d template1 -c "psql --command \"CREATE EXTENSION hstore;\""
+
+	echo " * add extension ... adminpack";
+	su - postgres -d template1 -c "psql --command \"CREATE EXTENSION adminpack;\""
+
+	echo " * add extension ... plperl";
+	su - postgres -d template1 -c "psql --command \"CREATE LANGUAGE plperl;\""
+
+	echo "### Stopping PostgreSQL (Setup)";
+	su - postgres -c "/usr/lib/postgresql/9.4/bin/pg_ctl -D $DATA_DIR stop"
+
 	echo " * create dev user";
 	su - postgres -c "psql --command \"CREATE USER dev WITH SUPERUSER PASSWORD 'dev';\""
 
 	echo " * create dev database";
 	su - postgres -c "createdb -O dev dev"
 
-	echo " * add extension ... citext";
-	su - postgres -c "psql --command \"CREATE EXTENSION citext;\""
-
-	echo " * add extension ... cube";
-	su - postgres -c "psql --command \"CREATE EXTENSION cube;\""
-
-	echo " * add extension ... earthdistance";
-	su - postgres -c "psql --command \"CREATE EXTENSION earthdistance;\""
-
-	echo " * add extension ... hstore";
-	su - postgres -c "psql --command \"CREATE EXTENSION hstore;\""
-
-	echo " * add extension ... adminpack";
-	su - postgres -c "psql --command \"CREATE EXTENSION adminpack;\""
-
-	echo " * add extension ... plperl";
-	su - postgres -c "psql --command \"CREATE LANGUAGE plperl;\""
-
-	echo "### Stopping PostgreSQL (Setup)";
-	su - postgres -c "/usr/lib/postgresql/9.4/bin/pg_ctl -D $DATA_DIR stop"
 
 	sleep 5
 else
