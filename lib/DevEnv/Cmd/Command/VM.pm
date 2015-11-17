@@ -81,6 +81,65 @@ has 'version' => (
 	default       => "0"
 );
 
+
+sub _non_instance_command {
+
+	my $self = shift;
+	my $opts = shift;
+	my $args = shift;
+
+	if ( $self->status ) {
+		DevEnv::VM->global_status();
+	}
+	elsif ( $self->stop ) {
+		DevEnv::VM->global_stop(
+			verbose => $self->verbose
+		);
+		print STDERR "VMs stopped\n";
+	}
+	else {
+		die "Cannot find command";
+	}
+}
+
+sub _instance_command {
+
+	my $self = shift;
+	my $opts = shift;
+	my $args = shift;
+
+	my $vm = DevEnv::VM->new(
+		project_config_file => $self->config_file,
+		instance_name       => $self->instance // "default",
+		verbose             => $self->verbose
+	);
+
+	if ( $self->start ) {
+
+		$vm->start( 
+			tags  => $self->tag 
+		);
+	}
+	elsif ( $self->stop ) {
+
+		$vm->stop( tags => $self->tag );
+	}
+	elsif ( $self->remove ) {
+
+		$vm->remove();
+	}
+	elsif ( $self->build ) {
+
+		$vm->build();
+	}
+	elsif ( $self->connect ) {
+		$vm->connect();
+	}
+	else {
+		die "Cannot find command";
+	}
+}
+
 after 'execute' => sub {
 
 	my $self = shift;
@@ -88,39 +147,13 @@ after 'execute' => sub {
 	my $args = shift;
 
 
-	if ( $self->status and not defined $self->instance ) {
+	if ( not defined $self->instance ) {
 
-		DevEnv::VM->global_status();
+		$self->_non_instance_command( opts => $opts, args => $args );
 	}
-	elsif ( $self->start or $self->stop or $self->build or $self->remove or $self->connect ) {
+	else {
 
-		my $vm = DevEnv::VM->new(
-			project_config_file => $self->config_file,
-			instance_name       => $self->instance // "default",
-			verbose             => $self->verbose
-		);
-
-		if ( $self->start ) {
-
-			$vm->start( 
-				tags  => $self->tag 
-			);
-		}
-		elsif ( $self->stop ) {
-
-			$vm->stop( tags => $self->tag );
-		}
-		elsif ( $self->remove ) {
-
-			$vm->remove();
-		}
-		elsif ( $self->build ) {
-
-			$vm->build();
-		}
-		elsif ( $self->connect ) {
-			$vm->connect();
-		}
+		$self->_instance_command( opts => $opts, args => $args );
 	}
 };
 

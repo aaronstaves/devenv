@@ -88,6 +88,27 @@ sub global_status {
 	return undef;
 }
 
+sub global_stop {
+
+	my $class = shift;
+	my %args  = @_;
+
+	foreach my $module ( @VM_MODULES ) {
+
+		my ( $module_name ) = $module =~ m/([^:]+)$/;
+
+		my $vms = $module->get_global_status();
+
+		foreach my $name ( sort keys %{$vms} ) {
+
+			__PACKAGE__->new(
+				instance_name       => $name,
+				verbose             => $args{verbose}
+			)->stop();
+		}
+	}
+}
+
 __PACKAGE__->meta->make_immutable;
 
 1;
