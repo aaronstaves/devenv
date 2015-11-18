@@ -317,6 +317,31 @@ sub _copy_devenv_to_vagrant {
 	return undef;
 }
 
+=head3 _build_system_bootstraps
+
+Will build file to be bootstapped during the provision
+
+=cut
+
+sub _build_system_bootstraps {
+
+	my $self = shift;
+
+print STDERR Dumper( $self->project_config );
+
+	if ( defined $self->project_config->{vm}{module}{Vagrant}{system}{extend_drive} ) {
+
+		open my $fh, ">", sprintf( "%s/bootstrap.sh", $self->instance_dir->stringify );
+		print $fh <<EOL;
+pvcreate /dev/sdb
+vgextend VolGroup /dev/sdb
+lvextend /dev/VolGroup/lv_root /dev/sdb
+resize2fs /dev/VolGroup/lv_root
+EOL
+		close $fh;
+	}
+}
+
 =head3 build (override)
 
 This method will build the VM.
@@ -351,8 +376,7 @@ override 'build' => sub {
 		# What host path should be mounted in the VM
 		shares            => $self->project_config->{vm}{shares} // [],
 
-		vm_memory         => $self->project_config->{vm}{module}{Vagrant}{system}{memory},
-		vm_cpus           => $self->project_config->{vm}{module}{Vagrant}{system}{cpus},
+		system            => $self->project_config->{vm}{module}{Vagrant}{system}
 	};
 
 	if ( defined $self->project_config->{general}{home_dir} and $self->project_config->{general}{home_dir} ne "" ) {
@@ -389,6 +413,8 @@ override 'build' => sub {
 	}
 
 	$self->_copy_devenv_to_vagrant();
+
+	$self->_build_system_bootstraps();
 
 	# Copy the init to /opt/devenv/etc/init.d/devenv
 	$self->copy_template(
