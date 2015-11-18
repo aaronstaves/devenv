@@ -90,15 +90,10 @@ sub _build_params {
 
 	my @params = ();
 
-	if ( 
-		defined $self->main_config->{vm}{module}{Vagrant}{provider}
-	and 
-		$self->main_config->{vm}{module}{Vagrant}{provider} ne ""
-	and
-		$self->main_config->{vm}{module}{Vagrant}{provider} ne "virtualbox" 
-	) {
-		push @params, "VAGRANT_DEFAULT_PROVIDER=" . $self->main_config->{vm}{module}{Vagrant}{provider};
-	}
+	# If the provider has not been set, default to virtualbox
+	$self->project_config->{vm}{module}{Vagrant}{provider} //= "virtualbox";
+
+	push @params, "VAGRANT_DEFAULT_PROVIDER=" . $self->project_config->{vm}{module}{Vagrant}{provider};
 
 	return join ( " ", @params );
 }
