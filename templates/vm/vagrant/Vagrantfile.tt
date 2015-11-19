@@ -4,13 +4,15 @@ $script = <<SCRIPT
 
 		echo "PROVISION START"
 
-		echo "deb http://http.debian.net/debian jessie-backports main" > /etc/apt/sources.list.d/docker.list
-
 		apt-get update
 		apt-get install -yqq --force-yes avahi-daemon
-		apt-get install -yqq --force-yes carton
-		apt-get install -yqq --force-yes docker.io
-		apt-get install -yqq --force-yes lvm2 system-config-lvm
+		apt-get install -yqq --force-yes cpanminus
+		apt-get install -yqq --force-yes make
+		apt-get install -yqq --force-yes curl
+
+		curl -sSL https://get.docker.com/ | sh
+
+		cpanm Carton
 
 		service docker restart
 
@@ -67,9 +69,9 @@ $script = <<SCRIPT
 
 		[% IF system.extend_drive %]
 		pvcreate /dev/sdb
-		vgextend VolGroup /dev/sdb
-		lvextend /dev/VolGroup/lv_root /dev/sdb
-		resize2fs /dev/VolGroup/lv_root
+		vgextend precise64 /dev/sdb
+		lvextend /dev/precise64/root /dev/sdb
+		resize2fs /dev/precise64/root 
 		[% END %]
 
 		echo "PROVISION END"
@@ -84,7 +86,7 @@ SCRIPT
 
 Vagrant.configure(2) do |config|
 
-	config.vm.box = "debian/jessie64"
+	config.vm.box = "hashicorp/precise64"
 
 	[% IF home_dir %]
 	config.vm.synced_folder "[% home_dir %]", "/home/dev", create: true
@@ -115,7 +117,7 @@ Vagrant.configure(2) do |config|
 
 			vb.customize [
 				'storageattach', :id,
-				'--storagectl', 'SATAController',
+				'--storagectl', 'SATA Controller',
 				'--port', 1, '--device', 0,
 				'--type', 'hdd', '--medium',
 				'./disk1.vdi'
