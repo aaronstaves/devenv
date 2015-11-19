@@ -216,8 +216,34 @@ override 'start' => sub {
 		$self->build();
 	}
 
-	system sprintf( "cd %s; %s %s up", $self->instance_dir, $self->vargant_params, $self->vagrant );
-	system sprintf( "cd %s; %s %s provision", $self->instance_dir, $self->vargant_params, $self->vagrant );
+	my $status = $self->get_global_status();
+
+	my $instance_status = $status->{ $self->instance_name };
+
+	if ( not defined $instance_status ) {
+		DevEnv::Exception->throw( sprintf( "Cannnot find global status for %s, does it exist?", $self->instance_name ) );
+	}
+
+	if ( $instance_status->{state} eq "running" ) {
+		DevEnv::Exception->throw( sprintf( "Instance %s is currently running. Cannot start.", $self->instance_name ) );
+	}
+
+	if ( $instance_status->{state} eq "poweroff" ) {
+
+		$self->debug( "VM is in power off state, starting up." );
+
+		system sprintf( "cd %s; %s %s up", $self->instance_dir, $self->vargant_params, $self->vagrant );
+		system sprintf( "cd %s; %s %s provision", $self->instance_dir, $self->vargant_params, $self->vagrant );
+	}
+	elsif ( $instance_status->{state} eq "saved" ) {
+
+		$self->debug( "VM is in suspended state, resuming." );
+
+		system sprintf( "cd %s; %s %s resume", $self->instance_dir, $self->vargant_params, $self->vagrant );
+	}
+	else {
+		 DevEnv::Exception->throw( sprintf( "Instance %s is the %s state. Not sure how to start.", $self->instance_name, $instance_status->{state} ) );
+	}
 
 	return undef;
 };
@@ -232,9 +258,43 @@ override 'stop' => sub {
 
 	my $self = shift;
 
+	$self->debug( "Stopping containers in VM" );
+
+	system sprintf( "cd %s; %s  %s ssh -c 'devenv docker --stop %s'",
+		$self->instance_dir,
+		$self->vargant_params,
+		$self->vagrant,
+		$self->verbose?"-v":""
+	);
+
 	$self->debug( "Stopping Vagrant VM" );
 
-	system sprintf( "cd %s; %s %s halt", $self->instance_dir, $self->vargant_params, $self->vagrant );
+	system sprintf( "cd %s; %s %s halt",
+		$self->instance_dir,
+		$self->vargant_params,
+		$self->vagrant
+	);
+
+	return undef;
+};
+
+=head3 suspend (override)
+
+This method will suspend the VM.
+
+=cut
+
+override 'suspend' => sub { 
+
+	my $self = shift;
+
+	$self->debug( "Suspending the Vagrant VM" );
+
+	system sprintf( "cd %s; %s %s suspend",
+		$self->instance_dir,
+		$self->vargant_params,
+		$self->vagrant
+	);
 
 	return undef;
 };

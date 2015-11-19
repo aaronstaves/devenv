@@ -71,6 +71,7 @@ $script = <<SCRIPT
 	/etc/init.d/avahi-daemon      restart
 	/opt/devenv/etc/init.d/devenv start
 
+	exit 0
 
 SCRIPT
 

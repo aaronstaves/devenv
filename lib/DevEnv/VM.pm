@@ -18,6 +18,7 @@ has '_vm' => (
 		qw/
 			start
 			stop
+			suspend
 			remove
 			build
 			status

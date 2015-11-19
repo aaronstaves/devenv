@@ -15,6 +15,13 @@ has 'start' => (
 	documentation => "Start the VM"
 );
 
+has 'suspend' => (
+    traits        => [ "Getopt" ],
+    isa           => 'Bool',
+    is            => 'rw',
+	documentation => "Suspend the VM"
+);
+
 has 'stop' => (
     traits        => [ "Getopt" ],
     isa           => 'Bool',
@@ -123,6 +130,10 @@ sub _instance_command {
 	elsif ( $self->stop ) {
 
 		$vm->stop( tags => $self->tag );
+	}
+	elsif ( $self->suspend ) {
+
+		$vm->suspend();
 	}
 	elsif ( $self->remove ) {
 

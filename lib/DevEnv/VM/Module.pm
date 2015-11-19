@@ -170,6 +170,7 @@ sub get_avahi_service_files {
 sub is_running { }
 sub start      { }
 sub stop       { }
+sub suspend    { }
 sub remove     { }
 sub build      { }
 sub status     { }
