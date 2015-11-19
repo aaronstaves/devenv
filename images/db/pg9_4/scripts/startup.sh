@@ -60,15 +60,14 @@ if [ ! -d "$DATA_DIR" ]; then
 	echo " * add extension ... plperl";
 	su - postgres -d template1 -c "psql --command \"CREATE LANGUAGE plperl;\""
 
-	echo "### Stopping PostgreSQL (Setup)";
-	su - postgres -c "/usr/lib/postgresql/9.4/bin/pg_ctl -D $DATA_DIR stop"
-
 	echo " * create dev user";
 	su - postgres -c "psql --command \"CREATE USER dev WITH SUPERUSER PASSWORD 'dev';\""
 
 	echo " * create dev database";
 	su - postgres -c "createdb -O dev dev"
 
+	echo "### Stopping PostgreSQL (Setup)";
+	su - postgres -c "/usr/lib/postgresql/9.4/bin/pg_ctl -D $DATA_DIR stop"
 
 	sleep 5
 else
