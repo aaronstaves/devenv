@@ -411,8 +411,7 @@ override 'build' => sub {
 		# What host path should be mounted in the VM
 		shares            => $self->project_config->{vm}{shares} // [],
 
-		vm_memory         => $self->project_config->{vm}{module}{Vagrant}{system}{memory},
-		vm_cpus           => $self->project_config->{vm}{module}{Vagrant}{system}{cpus},
+		system            => $self->project_config->{vm}{module}{Vagrant}{system}
 	};
 
 	if ( defined $self->project_config->{general}{home_dir} and $self->project_config->{general}{home_dir} ne "" ) {

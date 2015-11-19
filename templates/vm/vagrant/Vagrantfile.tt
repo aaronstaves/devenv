@@ -4,12 +4,15 @@ $script = <<SCRIPT
 
 		echo "PROVISION START"
 
-		echo "deb http://http.debian.net/debian jessie-backports main" > /etc/apt/sources.list.d/docker.list
-
 		apt-get update
 		apt-get install -yqq --force-yes avahi-daemon
-		apt-get install -yqq --force-yes carton
-		apt-get install -yqq --force-yes docker.io
+		apt-get install -yqq --force-yes cpanminus
+		apt-get install -yqq --force-yes make
+		apt-get install -yqq --force-yes curl
+
+		curl -sSL https://get.docker.com/ | sh
+
+		cpanm Carton
 
 		service docker restart
 
@@ -64,6 +67,13 @@ $script = <<SCRIPT
 
 		chmod a+rx /opt/devenv/etc/init.d/devenv
 
+		[% IF system.extend_drive %]
+		pvcreate /dev/sdb
+		vgextend precise64 /dev/sdb
+		lvextend /dev/precise64/root /dev/sdb
+		resize2fs /dev/precise64/root 
+		[% END %]
+
 		echo "PROVISION END"
 	fi
 
@@ -77,9 +87,7 @@ SCRIPT
 
 Vagrant.configure(2) do |config|
 
-	config.vm.box = "debian/jessie64"
-
-    config.vm.provision "shell", inline: $script
+	config.vm.box = "hashicorp/precise64"
 
 	[% IF home_dir %]
 	config.vm.synced_folder "[% home_dir %]", "/home/dev", create: true
@@ -90,13 +98,36 @@ Vagrant.configure(2) do |config|
 	[% END %]
 
 	config.vm.network "private_network", type: "dhcp"
-	config.vm.provider "virtualbox" do |vb|
+
+	config.vm.provider :virtualbox do |vb|
 
 		vb.name   = "[% box_name or "noname" %]"
-		vb.memory = [% vm_memory or "1024" %]
-		vb.cpus   = [% vm_cpus   or "1" %]
+		vb.memory = [% system.memory or "1024" %]
+		vb.cpus   = [% system.cpus   or "1" %]
+		
+		# Create a larger /var drive
+		[% IF system.extend_drive %]
+		# Validate this should be run it once
+		if ARGV[0] == "up" && ! File.exist?("./disk1.vdi")
+			vb.customize [
+				'createhd',
+				'--filename', "./disk1.vdi",
+				'--format', 'VDI',
+				'--size', [% system.extend_drive %]
+    		]
 
-#		vb.customize ["modifyvm", :id, "--nictype1", "virtio"]
+			vb.customize [
+				'storageattach', :id,
+				'--storagectl', 'SATA Controller',
+				'--port', 1, '--device', 0,
+				'--type', 'hdd', '--medium',
+				'./disk1.vdi'
+			]
+		end
+
+		[% END %]
 	end
+
+    config.vm.provision "shell", inline: $script
 
 end
