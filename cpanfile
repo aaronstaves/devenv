@@ -20,4 +20,5 @@ requires 'JSON::XS';
 requires 'Net::Address::IP::Local';
 requires 'HTML::Entities';
 requires 'File::Basename';
-
+requires 'IO::Tty';
+requires 'Expect';

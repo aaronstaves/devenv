@@ -114,9 +114,11 @@ sub get_global_status {
 	my $class = shift;
 	my %args = @_;
 
+	my $vagrant = which( $VAGRANT_FILE_NAME );
+
 	my ( $stdout, $stderr );
 	IPC::Run::run
-		[ which( $VAGRANT_FILE_NAME ), 'global-status' ],
+		[ $vagrant, 'global-status' ],
 		'>',  \$stdout,
 		'2>', \$stderr;
 
@@ -509,7 +511,7 @@ override 'connect' => sub {
 	my %args = @_;
 
 	if ( not $self->is_running ) {
-		DevEnv::Exceptions->throw( "Instance " . $self->instance_name . " is not running. Cannot connect." );
+		DevEnv::Exception->throw( "Instance " . $self->instance_name . " is not running. Cannot connect." );
 	}
 
 	system sprintf( "cd %s; %s %s ssh", $self->instance_dir, $self->vargant_params, $self->vagrant );
