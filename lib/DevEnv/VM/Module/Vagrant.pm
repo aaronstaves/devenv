@@ -401,10 +401,15 @@ override 'build' => sub {
 
 	make_path $self->external_temp_dir->stringify;
 
+	# Make a safe hostname
+	my $hostname = $self->instance_name;
+	$hostname =~ s/[^A-Z0-9]//gi;
+
 	my $vars = {
 		uid               => $self->user_id,
 		gid               => $self->group_id,
 		box_name          => $self->instance_name,
+		hostname          => $hostname,
 		config_file       => $self->project_config_file,
 		internal_temp_dir => $self->internal_temp_dir->stringify,
 		services          => [],
