@@ -113,7 +113,6 @@ Vagrant.configure(2) do |config|
 
 	config.vm.provider :virtualbox do |vb|
 
-#		vb.name   = "[% box_name or "noname" %]"
 		vb.memory = [% system.memory or "1024" %]
 		vb.cpus   = [% system.cpus   or "1" %]
 		
