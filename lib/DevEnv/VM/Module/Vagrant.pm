@@ -414,6 +414,7 @@ override 'build' => sub {
 		internal_temp_dir => $self->internal_temp_dir->stringify,
 		services          => [],
 		user_home_dir     => "/home/dev",
+		provider          => $self->project_config->{vm}{module}{Vagrant}{provider} // "virtualbox",
 
 		# What host path should be mounted in the VM
 		shares            => $self->project_config->{vm}{shares} // [],

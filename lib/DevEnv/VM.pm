@@ -9,7 +9,7 @@ use DevEnv::Exceptions;
 use Module::Find;
 use Module::Loaded;
 
-my @VM_MODULES = useall DevEnv::VM::Module;
+my @VM_MODULES = usesub DevEnv::VM::Module;
 
 has '_vm' => (
 	is  => 'ro',
