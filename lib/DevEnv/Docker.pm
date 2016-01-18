@@ -378,7 +378,7 @@ sub start {
 
 		if ( not defined $ps->{ $instance_name } ) {
 
-			DevEnv::Exceptions->throw( "Could not start up a container for $instance_name" );
+			DevEnv::Exception->throw( "Could not start up a container for $instance_name" );
 		}
 	
 		my $info = $self->control->status( container_name => $instance_name );
