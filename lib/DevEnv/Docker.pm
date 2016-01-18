@@ -228,8 +228,8 @@ sub start {
 
 	$self->debug( "Containter Order = " . join ( ", ", @container_order ) );
 
-
-	my @instance_names = ();
+	my @host_entries = ();
+	my @infos        = ();
 
 	# Get the order that the containers should be started
 	while ( my $container_name = shift @container_order ) {
@@ -380,17 +380,15 @@ sub start {
 
 			DevEnv::Exceptions->throw( "Could not start up a container for $instance_name" );
 		}
-
-		push @instance_names, $instance_name;
-	}
-
-	# Save information about this instance's containters in the $HOME .devenv directory
-	my $info = $self->control->status( container_name => join( " ", @instance_names ) );
-
-	my @host_entries = ();
-	foreach my $container ( @{$info} ) {
 	
-		push @host_entries, sprintf( "%s\t%s", $container->{NetworkSettings}{IPAddress}, $container->{Config}{Hostname} );
+		my $info = $self->control->status( container_name => $instance_name );
+		if ( defined $info and ref $info eq "ARRAY" ) {
+
+			push @infos, $info->[0];
+			if ( defined $info->[0]->{NetworkSettings}{IPAddress} and $info->[0]->{NetworkSettings}{IPAddress} ne "" ) {
+				push @host_entries, sprintf( "%s\t%s", $info->[0]->{NetworkSettings}{IPAddress}, $info->[0]->{Config}{Hostname} );
+			}
+		}
 	}
 
 	if ( defined $self->project_config->{hosts} ) {
@@ -409,7 +407,7 @@ sub start {
 	close $fh;
 
 	open $fh, ">", $info_dir->file( "inspect.json" )->stringify;
-	print $fh JSON::XS->new->encode( $info );
+	print $fh JSON::XS->new->encode( \@infos );
 	close $fh;
 }
 
