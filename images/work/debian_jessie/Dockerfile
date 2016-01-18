@@ -60,6 +60,7 @@ RUN apt-get -qqy --force-yes install \
 RUN rm ACCC4CF8.asc
 
 RUN apt-get -yqq install openssh-server
+RUN sed -i "s/^UsePAM yes/UsePAM no/" /etc/ssh/sshd_config
 RUN mkdir /var/run/sshd
 
 EXPOSE 22
