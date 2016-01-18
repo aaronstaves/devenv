@@ -17,3 +17,6 @@ So this is that project. The real goal was to get something working so I could p
     # Got custom images or configs?
     export DEVENV_CONFIG_DIR=/Users/me/custom/config
     export DEVENV_IMAGE_DIR=/Users/me/custom/images
+
+	# Optional. Allows containers to get hosts information from Host OS
+	devenv helper --start
