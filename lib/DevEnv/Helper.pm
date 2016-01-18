@@ -38,8 +38,6 @@ sub handle_request {
 
 	my ( $action ) = $path =~ m/([^\/]+)$/;
 
-	print STDERR "Path $path = " . ( $action || "NA" ) . "\n";
-
 	try {
 
 		if ( defined $action and $action =~ m/^(action|page|file)/ and $self->can( "_$action" ) ) {
@@ -80,8 +78,6 @@ sub _template {
 	my $template = $args{template};
 
 	my $include_path = $self->devenv->base_dir->subdir( "templates", "web" )->stringify();
-
-	print STDERR "Include Path =  $include_path\n";
 
 	my $tt = Template->new({
 		INCLUDE_PATH => $include_path,
@@ -131,9 +127,6 @@ sub _error {
 	my $status  = $args{status} || 500;
 	my $error   = $args{error};
 	my $message = $args{message};
-
-	print STDERR "$error\n";
-	print STDERR "$message\n";
 
 	print "HTTP/1.0 $status Error\r\n";
 	print $cgi->header;
