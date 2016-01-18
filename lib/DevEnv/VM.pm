@@ -125,8 +125,40 @@ sub global_stop {
 		}
 	}
 
-    my $yaml = YAML::Tiny->new( @instance_stopped );
+    my $yaml = YAML::Tiny->new( { stopped => \@instance_stopped } );
     $yaml->write( sprintf( "%s/.devenv/global_stop.yml", $ENV{HOME} ) );
+}
+
+sub global_start {
+
+	my $class = shift;
+	my %args  = @_;
+
+	my $global_stop_file = sprintf( "%s/.devenv/global_stop.yml", $ENV{HOME} );
+	
+	if ( ! -f $global_stop_file ) {
+
+		DevEnv::Exceptions->throw( "Instances were not globally stopped, can not restart." );
+	}
+	
+	my $yaml = YAML::Tiny->read( $global_stop_file )->[0];
+
+	foreach my $instance_name ( @{$yaml->{stopped}} ) {
+
+		my $vm = __PACKAGE__->new(
+			instance_name       => $instance_name,
+			verbose             => $args{verbose}
+		);
+
+		$vm->debug( $instance_name );
+
+		# If it's not running, then don't stop it
+		next if ( $vm->is_running );
+
+		$vm->debug( " * starting" );
+
+		$vm->start();
+	}
 }
 
 __PACKAGE__->meta->make_immutable;

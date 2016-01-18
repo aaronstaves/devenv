@@ -104,6 +104,12 @@ sub _non_instance_command {
 		);
 		print STDERR "VMs stopped\n";
 	}
+	elsif ( $self->start ) {
+		DevEnv::VM->global_start(
+			verbose => $self->verbose
+		);
+		print STDERR "VMs started\n";
+	}
 	else {
 		die "Cannot find command";
 	}
