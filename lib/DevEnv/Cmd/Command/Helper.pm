@@ -36,6 +36,18 @@ after 'execute' => sub {
 
 	if ( $self->start ) {
 
+	
+		my $found = 0;
+
+        my $t = new Proc::ProcessTable;
+        foreach my $p ( @{$t->table} ){
+            if( $p->cmndline =~ m/devenv_helper/ ) {
+				$found = 1;
+            }
+        }
+
+		return if ( $found );
+
 		print STDERR "Starting DevEnv Helper\n";
 
 		$0 = "devenv_helper";
