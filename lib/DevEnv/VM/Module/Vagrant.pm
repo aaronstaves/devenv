@@ -114,11 +114,9 @@ sub get_global_status {
 	my $class = shift;
 	my %args = @_;
 
-	my $vagrant = which( $VAGRANT_FILE_NAME );
-
 	my ( $stdout, $stderr );
 	IPC::Run::run
-		[ $vagrant, 'global-status' ],
+		[ $VAGRANT_FILE_NAME, 'global-status' ],
 		'>',  \$stdout,
 		'2>', \$stderr;
 
@@ -132,7 +130,7 @@ sub get_global_status {
 
 	my @rows = split /\n/, $stdout;
 
-	my $header     = shift @rows;
+	my $header = shift @rows;
 
 	my $last_index = length ( $header ) * 2;
 	foreach my $column ( reverse @columns ) {
@@ -164,6 +162,9 @@ sub get_global_status {
 
 		# Skip VMs that are not ours :)
 		next if ( $record{directory} !~ m/^\Q$vm_dir\E/ );
+
+		# Skips if the directory doesn't exist
+		next if ( ! -d $record{directory} );
 
 		my ( $name ) = $record{directory} =~ m/([^\/]+$)/;
 

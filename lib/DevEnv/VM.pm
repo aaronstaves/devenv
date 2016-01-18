@@ -8,6 +8,8 @@ use DevEnv::Exceptions;
 
 use Module::Find;
 use Module::Loaded;
+use YAML::Tiny;
+use Data::Dumper;
 
 my @VM_MODULES = usesub DevEnv::VM::Module;
 
@@ -16,6 +18,7 @@ has '_vm' => (
 	isa => 'DevEnv::VM::Module',
 	handles => [
 		qw/
+			is_running
 			start
 			stop
 			suspend
@@ -94,6 +97,8 @@ sub global_stop {
 	my $class = shift;
 	my %args  = @_;
 
+	my @instance_stopped = ();
+
 	foreach my $module ( @VM_MODULES ) {
 
 		my ( $module_name ) = $module =~ m/([^:]+)$/;
@@ -102,12 +107,26 @@ sub global_stop {
 
 		foreach my $name ( sort keys %{$vms} ) {
 
-			__PACKAGE__->new(
+			my $vm = __PACKAGE__->new(
 				instance_name       => $name,
 				verbose             => $args{verbose}
-			)->stop();
+			);
+
+			$vm->debug( "$module -> $name" );
+
+			# If it's not running, then don't stop it
+			next if ( not $vm->is_running );
+
+			$vm->debug( " * stopping" );
+
+			push @instance_stopped, $name;
+
+			$vm->stop();
 		}
 	}
+
+    my $yaml = YAML::Tiny->new( @instance_stopped );
+    $yaml->write( sprintf( "%s/.devenv/global_stop.yml", $ENV{HOME} ) );
 }
 
 __PACKAGE__->meta->make_immutable;
