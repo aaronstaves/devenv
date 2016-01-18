@@ -9,6 +9,9 @@ use DevEnv::Docker::Control;
 
 use Path::Class;
 use Data::Dumper;
+use LWP::UserAgent;
+use File::Path qw/make_path remove_tree/;
+use JSON::XS;
 
 has 'control' => (
 	is       => 'ro',
@@ -159,11 +162,18 @@ sub _env {
 
 	my ( $gid ) = split /\s/, $(;
 
+	open my $gateway, q{/sbin/route -n | grep 'UG[ \t]' | awk '{print $2}'} . " |";
+	my $gateway_ip = <$gateway>;
+	close $gateway;
+	chomp $gateway_ip;
+
 	my $env_hashref = {
 		DEVENV_MY_UID        => $self->user_id,
 		DEVENV_MY_GID        => $self->group_id,
 		DEVENV_MY_HOME       => $self->home_dir,
 		DEVENV_INSTANCE_NAME => $self->instance_name,
+		DEVENV_GATEWAY       => $gateway_ip,
+		DEVENV_HELPER_PORT   => $self->project_config->{helper}{port}
 	};
 
 	my $config = $self->project_config->{containers}{ $container_name };
@@ -217,6 +227,9 @@ sub start {
 	);
 
 	$self->debug( "Containter Order = " . join ( ", ", @container_order ) );
+
+
+	my @instance_names = ();
 
 	# Get the order that the containers should be started
 	while ( my $container_name = shift @container_order ) {
@@ -359,7 +372,45 @@ sub start {
 
 		# Let the containter start
 		sleep 3;
+
+		# Update the PS
+		$ps = $self->control->ps;
+
+		if ( not defined $ps->{ $instance_name } ) {
+
+			DevEnv::Exceptions->throw( "Could not start up a container for $instance_name" );
+		}
+
+		push @instance_names, $instance_name;
 	}
+
+	# Save information about this instance's containters in the $HOME .devenv directory
+	my $info = $self->control->status( container_name => join( " ", @instance_names ) );
+
+	my @host_entries = ();
+	foreach my $container ( @{$info} ) {
+	
+		push @host_entries, sprintf( "%s\t%s", $container->{NetworkSettings}{IPAddress}, $container->{Config}{Hostname} );
+	}
+
+	if ( defined $self->project_config->{hosts} ) {
+
+		foreach my $host_item ( @{$self->project_config->{hosts}} ) {
+			push @host_entries, sprintf( "%s\t%s", $host_item->{ip}, $host_item->{host} );
+		}
+	}
+
+	my $info_dir = $self->devenv_dir->subdir( "info", $self->instance_name );
+
+	make_path ( $info_dir->stringify );
+
+	open my $fh, ">", $info_dir->file( "docker_hosts" )->stringify;
+	print $fh join ( "\n", @host_entries );
+	close $fh;
+
+	open $fh, ">", $info_dir->file( "inspect.json" )->stringify;
+	print $fh JSON::XS->new->encode( $info );
+	close $fh;
 }
 
 sub stop {
@@ -577,6 +628,15 @@ sub status {
 	} @{$status->{containers}};
 
 	return $status;
+}
+
+sub host_file_write {
+
+	my $self = shift;
+
+	open my $host, "cat /etc/hosts |";
+
+	close $host;
 }
 
 __PACKAGE__->meta->make_immutable;

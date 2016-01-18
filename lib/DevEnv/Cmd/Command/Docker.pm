@@ -38,6 +38,13 @@ has 'status' => (
 	documentation => "Display Status"
 );
 
+has 'host_file' => (
+    traits        => [ "Getopt" ],
+    isa           => 'Bool',
+    is            => 'rw',
+	documentation => "Update the host file ( requires Helper on Host OS )"
+);
+
 has 'config_file' => (
     traits        => [ "Getopt" ],
     isa           => 'Str',
@@ -174,9 +181,10 @@ after 'execute' => sub {
 	elsif ( $self->status ) {
 
 		my $status = $docker->status();
+	}
+	elsif ( $self->host_file ) {
 
-print STDERR Dumper( $status );
-
+		$docker->host_file_write();
 	}
 	else {
 		DevEnv::Exception->throw( "No command, doing nothing." );

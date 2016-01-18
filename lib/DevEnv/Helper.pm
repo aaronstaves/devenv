@@ -7,9 +7,11 @@ use DevEnv;
 use DevEnv::Exceptions;
 
 use Template;
-use Expect;
 use Try::Tiny;
 use JSON::XS;
+use Data::Dumper;
+use Socket;
+use IPC::Run;
 
 has 'devenv' => (
 	isa     => 'DevEnv',
@@ -164,55 +166,61 @@ sub _page_index {
 	return undef;
 }
 
-sub _action_dns {
+sub _action_hosts {
 
 	my $self = shift;
 	my %args = @_;
 
 	my $cgi = $args{cgi};
 
-	my $host = $cgi->param('host');
+	# List the HTTP services 
+	my @cmd = ( "dns-sd", "-Z" );
 
-	my $ip = undef;
+	my $in = "";
+	my $out = "";
+	my $err = "";
 
-	my $exp = Expect->new();
-	$exp->raw_pty(1);
-	$exp->spawn( "/bin/bash" ) or die "Cannot spawn bash: $!\n";
+	eval {
+		IPC::Run::run \@cmd, \$in, \$out, \$err, IPC::Run::timeout ( 10 );
+	};
 
-	$exp->send( "dns-sd -q $host\n");
-	$exp->expect(
-		10,
-		[ 
-			qr/STARTING/ => sub {
-				my $exp = shift;
-				$exp->clear_accum();
-           	},
-		]
-	);
-	$exp->expect(
-		10,
-		[ 
-			qr/$host/ => sub {
-				my $exp = shift;
-	            sleep 2;
+	my $hosts = undef;
 
-				my $buffer = $exp->after();
+	foreach my $row ( split /\n/, $out ) {
 
-				( $ip ) = $buffer =~ m/(\d+\.\d+\.\d+\.\d+)/;
-           	},
-		]
-	);
-	$exp->hard_close();
+		next if ( $row =~ m/^;/ );
+
+		# The SRV lines have the host name
+		if ( $row =~ m/\bSRV\b/ ) {
+
+			my ( $name, $srv, $n1, $n2, $port, $host ) = split /\s+/, $row;
+
+			# Get the IP, if possible, from the host name
+			my $ip = undef;
+			eval {
+				my @addresses = gethostbyname($host) or die "Can't resolve $host: $!\n";
+				( $ip ) = map { inet_ntoa($_) } @addresses[4 .. $#addresses];
+			};
+
+			next if ( not defined $ip );
+
+			$host =~ s/\.$//;
+
+			$hosts->{ $host } = $ip;
+		}
+	}
+
+	my @hosts = ();
+	foreach my $host ( keys %{$hosts} ) {
+
+		push @hosts, sprintf( "%s\t%s", $hosts->{$host}, $host );
+		
+	}
 
 	$self->_ok(
 		cgi          => $cgi,
-		content_type => "applitcation/json",
-		content      => JSON::XS->new->utf8->pretty->encode(
-			{
-				host => $host,
-				ip   => $ip
-			}
-		)
+		content_type => "plain/text",
+		content      => join ( "\n", @hosts ) . "\n"
 	);
 
 	return undef;

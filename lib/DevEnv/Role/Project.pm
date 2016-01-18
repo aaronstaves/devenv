@@ -6,6 +6,7 @@ use DevEnv::Config::Project;
 
 use Path::Class;
 use File::Spec;
+use File::Path qw/make_path/;
 
 requires qw/instance_name/;
 
@@ -114,13 +115,28 @@ sub _build_group_id {
 
 has 'home_dir' => (
 	is      => 'ro',
-	isa     => 'Str',
+	isa     => 'Path::Class::Dir',
 	lazy    => 1,
 	builder => '_build_home_dir'
 );
 sub _build_home_dir {
 	my $self = shift;
-	return $ENV{DEVENV_MY_HOME} // $self->project_config->{general}{home_dir} // $ENV{HOME};
+	return dir ( $ENV{DEVENV_MY_HOME} // $self->project_config->{general}{home_dir} // $ENV{HOME} );
+}
+
+has 'devenv_dir' => (
+	is      => 'ro',
+	isa     => 'Path::Class::Dir',
+	lazy    => 1,
+	builder => '_build_devenv_dir'
+);
+sub _build_devenv_dir {
+	my $self = shift;
+	my $dir = dir ( $self->home_dir, ".devenv" );
+
+	make_path ( $dir->stringify );
+
+	return $dir;
 }
 
 1;

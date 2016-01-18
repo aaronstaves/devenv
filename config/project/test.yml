@@ -1,0 +1,15 @@
+---
+hosts:
+  - host: bacon.com
+    ip: 127.0.0.1
+containers:
+  test:
+    type: work
+    description: Test Environment
+    image: test
+    services:
+      - name: SSH
+        type: ssh
+        src_port: 22222
+        dst_port: 22
+    required: 1

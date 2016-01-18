@@ -215,7 +215,7 @@ sub status {
 		'>',  \$stdout,
 		'2>', \$stderr;
 
-	return JSOX::XS->new->decode( $stdout );
+	return JSON::XS->new->decode( $stdout );
 }
 
 sub run {

@@ -22,3 +22,5 @@ requires 'HTML::Entities';
 requires 'File::Basename';
 requires 'IO::Tty';
 requires 'Expect';
+requires 'LWP::UserAgent';
+requires 'Proc::ProcessTable';
