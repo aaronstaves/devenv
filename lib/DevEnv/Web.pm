@@ -166,7 +166,9 @@ sub _ok {
 	my $hostname = $self->_docker()->project_config->{web}{hostname};
 
 	if ( not defined $hostname and $self->_docker()->project_config->{web}{bonjour} ) {
-		$hostname = sprintf( "%s.local", $self->instance_name );
+		$hostname = $self->instance_name;
+		$hostname =~ s/[^A-Z0-9]//gi;
+		$hostname .= ".local";
 	}
 	else {
 		$hostname = eval { Net::Address::IP::Local->connected_to('google.com') };
