@@ -335,7 +335,7 @@ sub start {
 			if ( $config->{type} eq "work" ) {
 
 				push @{$config->{shares}}, {
-					src_dir  => $self->home_dir,
+					src_dir  => $self->home_dir->stringify,
 					dest_dir => "/home/dev"
 				};
 			}
