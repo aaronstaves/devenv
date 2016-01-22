@@ -171,6 +171,7 @@ sub _env {
 		DEVENV_MY_UID        => $self->user_id,
 		DEVENV_MY_GID        => $self->group_id,
 		DEVENV_MY_HOME       => $self->home_dir,
+		DEVENV_MY_WORK       => $self->work_dir,
 		DEVENV_INSTANCE_NAME => $self->instance_name,
 		DEVENV_GATEWAY       => $gateway_ip,
 		DEVENV_HELPER_PORT   => $self->project_config->{helper}{port}
@@ -338,6 +339,12 @@ sub start {
 					dest_dir => "/home/dev"
 				};
 			}
+
+			# Place work directory outside of dockers. If in a VM, place in VM. Docker->VM->HostOS causes cache problems with Git :(
+			push @{$config->{shares}}, {
+				src_dir  => $self->work_dir,
+				dest_dir => "/work"
+			};
 
 			if ( defined $config->{shares} ) {
 

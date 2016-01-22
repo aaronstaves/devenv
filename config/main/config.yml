@@ -7,12 +7,12 @@ vm:
   module:
     Vagrant:
       provider: virtualbox
-      server_url:
 web:
   port: 5999
   bonjour: 1
 helper:
   port: 5998
 docker:
+  work_dir: /work
   registry:
   - localhost:5000
