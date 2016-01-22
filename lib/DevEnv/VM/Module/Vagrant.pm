@@ -524,6 +524,31 @@ override 'connect' => sub {
 	system sprintf( "cd %s; %s %s ssh", $self->instance_dir, $self->vargant_params, $self->vagrant );
 };
 
+=head3 package (override)
+
+Turn the VM into a distributable package
+
+
+=cut
+
+override 'package' => sub {
+
+	my $self = shift;
+	my %args = @_;
+
+	if ( ! $self->is_running ) {
+
+		$self->start;
+		system sprintf( "cd %s; %s %s ssh -c /devenv/scripts/vagrant_clean.sh", $self->instance_dir, $self->vargant_params, $self->vagrant );
+	}
+
+	if ( not $self->is_running ) {
+		$self->stop;
+	}
+
+	system sprintf( "cd %s; %s %s package", $self->instance_dir, $self->vargant_params, $self->vagrant );
+};
+
 __PACKAGE__->meta->make_immutable;
 
 1;

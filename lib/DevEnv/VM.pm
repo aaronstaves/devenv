@@ -26,6 +26,7 @@ has '_vm' => (
 			build
 			status
 			connect
+			package
 		/
 	]
 );

@@ -57,6 +57,13 @@ has 'connect' => (
 	documentation => "Connect to the VM"
 );
 
+has 'package' => (
+    traits        => [ "Getopt" ],
+    isa           => 'Bool',
+    is            => 'rw',
+	documentation => "Package the VM"
+);
+
 has 'instance' => (
     traits        => [ "Getopt" ],
     isa           => 'Str',
@@ -151,6 +158,9 @@ sub _instance_command {
 	}
 	elsif ( $self->connect ) {
 		$vm->connect();
+	}
+	elsif ( $self->package ) {
+		$vm->package();
 	}
 	else {
 		die "Cannot find command";

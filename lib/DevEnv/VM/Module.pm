@@ -175,6 +175,7 @@ sub remove     { }
 sub build      { }
 sub status     { }
 sub connect    { }
+sub package    { }
 
 __PACKAGE__->meta->make_immutable;
 
