@@ -127,6 +127,8 @@ sub _non_instance_command {
 		print STDERR "VMs started\n";
 	}
 	else {
+		print STDERR $self->usage();
+
 		die "Cannot find command";
 	}
 }
@@ -175,6 +177,7 @@ sub _instance_command {
 		$vm->status();
 	}
 	else {
+		print STDERR $self->usage();
 		die "Cannot find command";
 	}
 }

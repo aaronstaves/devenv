@@ -6,7 +6,8 @@ use DevEnv::Exceptions;
 
 use YAML::Tiny;
 use Path::Class;
-use Hash::Merge qw(merge);
+use Hash::Merge;
+use Data::Dumper;
 
 has 'devenv' => (
 	is      => 'ro',
@@ -124,14 +125,17 @@ sub _build_config {
 
 	# Finalize the config
 
-	my $final_config = merge( 
-		merge( $main_config, $project_config ),
+	my $merge = Hash::Merge->new( 'RIGHT_PRECEDENT' );
+	my $final_config = $merge->merge( 
+		$merge->merge( $main_config, $project_config ),
 		$instance_config
 	);
 
 	if ( not defined $final_config->{containers} ) {
 		DevEnv::Exception::Config->throw( "Cannot find any containers in config file, or no config file specified. Specifiy a config file, or check if the config file is setup correctly." );
 	}
+
+print STDERR Dumper( $final_config );
 
 	return $final_config;
 }
