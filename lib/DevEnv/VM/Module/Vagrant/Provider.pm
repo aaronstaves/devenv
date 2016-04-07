@@ -13,6 +13,16 @@ sub _version_cmp {
 	my $sep     = $args{sep} // ".";
 }
 
+sub adjust_config {
+
+	my $self = shift;
+	my %args = @_;
+
+	my $config = $args{config};
+
+	return $config;
+}
+
 sub template_vars {
 
 	my $self = shift;

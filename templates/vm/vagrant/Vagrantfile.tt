@@ -167,7 +167,7 @@ Vagrant.configure(2) do |config|
 		[% IF system.extend_drive %]
 
 			vdiskmanager = '/Applications/VMware\ Fusion.app/Contents/Library/vmware-vdiskmanager'
-			file_to_disk = './disk1.vmdk'
+			file_to_disk = './disk2.vmdk'
 
 			`#{vdiskmanager} -c -s [% system.extend_drive %] -a lsilogic -t 1 #{file_to_disk}`
 			vm.vmx['scsi0:1.filename'] = file_to_disk

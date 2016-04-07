@@ -3,23 +3,24 @@ use Moose;
 
 extends 'DevEnv::VM::Module::Vagrant::Provider';
 
-has 'virtualbox_file_name' => (
+has 'vmware_fusion_file_name' => (
     is      => 'ro',
     isa     => 'Str',
     default => sub {
-        return "virtualbox"
+        return "vmware-vdiskmanager";
     }
 );
 
-has 'virtualbox' => (
+has 'vmware_fusion' => (
 	is      => 'ro',
 	isa     => 'Str',
 	lazy    => 1,
-	builder => '_build_virtualbox'
+	builder => '_build_vmware_fusion'
 );
-sub _build_virtualbox {
+sub _build_vmware_fusion {
 	my $self = shift;
-	return which( $self->virtualbox_file_name );
+
+	return '/Applications/VMware Fusion.app/Contents/Library/' . $self->vmware_fusion_file_name;
 }
 
 has 'version' => (
@@ -34,21 +35,21 @@ sub _build_version {
 
     my ( $stdout, $stderr );
     IPC::Run::run
-        [ $self->virtualbox, '--help' ],
+        [ $self->vmware_fusion ],
         '>',  \$stdout,
         '2>', \$stderr;
 
 	my ( $line ) = split /\n/, $stdout;
 
-	my ( $version_str ) =~ m/([\d\.]+)$/;
+	my ( $version_str ) =~ m/build (\d+).$/;
 
 	return $version_str;
 }
 
 override 'adjust_config' => sub {
 
-	my $self = shift;
-
+    my $self = shift;
+	my %args = @_;
 
 }
 
@@ -58,7 +59,7 @@ override 'template_vars' => sub {
 
 	return {
 
-		provider => 'virtualbox'
+		provider => 'vmware_fusion'
 
 	};
 };
