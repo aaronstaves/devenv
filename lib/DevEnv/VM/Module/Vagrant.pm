@@ -389,6 +389,9 @@ This method will build the VM.
 override 'build' => sub {
 	
 	my $self = shift;
+    my %args = @_;
+
+	my $skip_docker_build = $args{skip_docker_build} // 0;
 
 	$self->debug( "Building Vagrant box" );
 
@@ -420,7 +423,9 @@ override 'build' => sub {
 		# What host path should be mounted in the VM
 		shares            => $self->project_config->{vm}{shares} // [],
 
-		system            => $self->project_config->{vm}{module}{Vagrant}{system}
+		system            => $self->project_config->{vm}{module}{Vagrant}{system},
+		config            => $self->project_config
+
 	};
 
 	if ( defined $self->project_config->{general}{home_dir} and $self->project_config->{general}{home_dir} ne "" ) {
@@ -465,12 +470,22 @@ override 'build' => sub {
 		vars          => $vars
 	);
 
-	# Copy the Vagrant template to the instance directory
+	# Copy the samba config
 	$self->copy_template(
-		template_file => "vm/vagrant/Vagrantfile.tt",
-		dst_file      => $self->instance_dir->file( "Vagrantfile" ),
+		template_file => "vm/vagrant/smb.conf.tt",
+		dst_file      => $self->instance_dir->file( "smb.conf" ),
 		vars          => $vars
 	);
+
+	if ( $self->project_config->{vm}{enable_samba} ) {
+
+		# Copy the Vagrant template to the instance directory
+		$self->copy_template(
+			template_file => "vm/vagrant/Vagrantfile.tt",
+			dst_file      => $self->instance_dir->file( "Vagrantfile" ),
+			vars          => $vars
+		);
+	}
 
     DevEnv::Config::Project->instance->instance_config_write(
         config => $self->project_config,
@@ -479,16 +494,19 @@ override 'build' => sub {
 
 	system sprintf( "cd %s; %s %s up", $self->instance_dir, $self->vargant_params, $self->vagrant );
 
-	my $cmd = sprintf( "cd %s; %s  %s ssh -c 'devenv docker --start %s'",
-		$self->instance_dir,
-		$self->vargant_params,
-		$self->vagrant,
-		$self->verbose?"-v":""
-	);
+	if ( not $skip_docker_build ) {
 
-	$self->debug( "Vagrant Provision = $cmd" );
+		my $cmd = sprintf( "cd %s; %s  %s ssh -c 'devenv docker --start %s'",
+			$self->instance_dir,
+			$self->vargant_params,
+			$self->vagrant,
+			$self->verbose?"-v":""
+		);
 
-	system $cmd;
+		$self->debug( "Vagrant Provision = $cmd" );
+
+		system $cmd;
+	}
 
 	return undef;
 };
@@ -504,6 +522,18 @@ override 'status' => sub {
 	my $self = shift;
 	my %args = @_;
 
+	my $cmd = sprintf( "cd %s; %s %s status %s",
+		$self->instance_dir,
+		$self->vargant_params,
+		$self->vagrant,
+		$self->verbose?"-v":""
+	);
+
+	open my $fh, "$cmd |";
+	my @data = <$fh>;
+	close $fh;
+
+	print STDERR Dumper( \@data );
 };
 
 =head3 connect (override)

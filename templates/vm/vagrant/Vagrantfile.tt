@@ -12,6 +12,7 @@ $script = <<SCRIPT
 		apt-get install -yqq --force-yes linux-image-virtual
 		apt-get install -yqq --force-yes linux-image-extra-virtual
 		apt-get install -yqq --force-yes lvm2
+		apt-get install -yqq --force-yes samba
 
 		curl -sSL https://get.docker.com/ | sh
 
@@ -92,9 +93,19 @@ $script = <<SCRIPT
 		echo '/swapfile none swap defaults 0 0' >> /etc/fstab
 		[% END %]
 
+		[% IF config.vm.enable_samba %]
+		cp /vagrant/smb.conf /etc/samba
+		/etc/init.d/samba             restart
+		echo -ne "dev\ndev\n" | smbpasswd -a dev
+		echo -ne "vagrant\nvagrant\n" | smbpasswd -a vagrant
+		[% END %]
+
 		echo "PROVISION END"
 	fi
 
+	[% IF config.vm.enable_samba %]
+	/etc/init.d/samba             restart
+	[% END %]
 	/etc/init.d/avahi-daemon      restart
 	/opt/devenv/etc/init.d/devenv start
 

@@ -95,6 +95,15 @@ has 'version' => (
 	default       => "0"
 );
 
+has 'skip_docker_build' => (
+    traits        => [ "Getopt" ],
+    isa           => 'Bool',
+    is            => 'rw',
+	cmd_aliases   => 'S',
+	documentation => "Skip docker build. Build VM only."
+);
+
+
 
 sub _non_instance_command {
 
@@ -154,13 +163,16 @@ sub _instance_command {
 	}
 	elsif ( $self->build ) {
 
-		$vm->build();
+		$vm->build( skip_docker_build => $self->skip_docker_build );
 	}
 	elsif ( $self->connect ) {
 		$vm->connect();
 	}
 	elsif ( $self->package ) {
 		$vm->package();
+	}
+	elsif ( $self->status ) {
+		$vm->status();
 	}
 	else {
 		die "Cannot find command";

@@ -132,8 +132,22 @@ sub get_avahi_service_files {
 				port     => $self->project_config->{web}{port} // 5999,
 				protocal => "tcp"
 			)
-		}
+		},
 	);
+
+	if ( $self->project_config->{vm}{enable_samba} ) {
+
+		push @avahi_files, {
+			name => 'devenv_vm_samba.service',
+			file => $self->avahi_service(
+				box_name => $self->instance_name,
+				name     => "Samba",
+				type     => "smg",
+				port     => 445,
+				protocal => "tcp"
+			)
+		};
+	}
 
 	foreach my $container_name ( keys %{$self->project_config->{containers}} ) {
 
@@ -145,6 +159,9 @@ sub get_avahi_service_files {
 
 				# Skip services without tpye
 				next if ( not defined $service->{type} );
+
+				# Skip docker samba if vm samba is enabled
+				next if ( $service->{type} eq "smb" and $self->project_config->{vm}{enable_samba} );
 
 				my $name = lc $service->{name};
 				$name =~ s/[^\w]/_/g;
