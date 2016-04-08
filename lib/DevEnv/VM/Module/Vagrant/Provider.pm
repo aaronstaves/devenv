@@ -1,7 +1,7 @@
 package DevEnv::VM::Module::Vagrant::Provider;
 use Moose;
 
-extends 'DevEnv';
+#extends 'DevEnv';
 
 sub _version_cmp {
 
@@ -15,10 +15,8 @@ sub _version_cmp {
 
 sub adjust_config {
 
-	my $self = shift;
-	my %args = @_;
-
-	my $config = $args{config};
+	my $self   = shift;
+	my $config = shift;
 
 	return $config;
 }
@@ -26,9 +24,9 @@ sub adjust_config {
 sub template_vars {
 
 	my $self = shift;
+	my $vars = shift;
 
-
-	return {};
+	return $vars;
 }
 
 __PACKAGE__->meta->make_immutable;

@@ -164,15 +164,18 @@ Vagrant.configure(2) do |config|
 		vm.vmx["memsize"] = [% system.memory or "1024" %]
 		vm.vmx["numvcpus"] = [% system.cpus   or "1" %]
 
+		file_to_disk = './disk1.vmdk'
+
 		[% IF system.extend_drive %]
+		if ARGV[0] == "up" && ! File.exist?(file_to_disk)
 
 			vdiskmanager = '/Applications/VMware\ Fusion.app/Contents/Library/vmware-vdiskmanager'
-			file_to_disk = './disk2.vmdk'
 
 			`#{vdiskmanager} -c -s [% system.extend_drive %] -a lsilogic -t 1 #{file_to_disk}`
 			vm.vmx['scsi0:1.filename'] = file_to_disk
 			vm.vmx['scsi0:1.present']  = 'TRUE'
 			vm.vmx['scsi0:1.redo']     = ''
+		end
 
 		[% END %]
 

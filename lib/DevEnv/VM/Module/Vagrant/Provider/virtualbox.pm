@@ -3,6 +3,10 @@ use Moose;
 
 extends 'DevEnv::VM::Module::Vagrant::Provider';
 
+use DevEnv::Tools::Convert;
+
+use IPC::Run;
+
 has 'virtualbox_file_name' => (
     is      => 'ro',
     isa     => 'Str',
@@ -47,20 +51,40 @@ sub _build_version {
 
 override 'adjust_config' => sub {
 
-	my $self = shift;
+	my $self   = shift;
+	my $config = shift;
 
+	my $memory = DevEnv::Tools::Convert->convert_value_to_M(
+		DevEnv::Tools::Convert->convert_to_full_number( $config->{vm}{Vagrant}{system}{memory} )
+	);
+	my $extend_drive = DevEnv::Tools::Convert->convert_value_to_M(
+		DevEnv::Tools::Convert->convert_to_full_number( $config->{vm}{Vagrant}{system}{extend_drive} )
+	);
+	my $swap = DevEnv::Tools::Convert->convert_value_to_G(
+		DevEnv::Tools::Convert->convert_to_full_number( $config->{vm}{Vagrant}{system}{swap} )
+	);
 
-}
+	if ( defined $memory ) {
+		$config->{vm}{Vagrant}{system}{memory} = $memory;
+	}
+	if ( defined $extend_drive ) {
+		$config->{vm}{Vagrant}{system}{extend_drive} = $extend_drive;
+	}
+	if ( defined $swap ) {
+		$config->{vm}{Vagrant}{system}{swap} = $swap . "G";
+	}
+
+	return $config;
+};
 
 override 'template_vars' => sub {
 
 	my $self = shift;
+	my $vars = shift;
 
-	return {
+	$vars->{provider} = 'virtualbox';
 
-		provider => 'virtualbox'
-
-	};
+	return $vars;
 };
 
 __PACKAGE__->meta->make_immutable;

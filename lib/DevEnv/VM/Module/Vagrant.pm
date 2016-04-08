@@ -7,6 +7,7 @@ use DevEnv;
 use DevEnv::Docker;
 use DevEnv::Exceptions;
 use DevEnv::Config::Project;
+use DevEnv::VM::Module::Vagrant::Provider;
 
 use IPC::Run;
 use Path::Class;
@@ -15,10 +16,49 @@ use File::Copy;
 use File::Path qw/make_path remove_tree/;
 use File::Copy::Recursive qw/fcopy rcopy dircopy fmove rmove dirmove/;
 use Clone qw/clone/;
+use Module::Find;
 
 use Data::Dumper;
 
 our $VAGRANT_FILE_NAME = "vagrant";
+
+has 'provider' => (
+	is      => 'ro',
+	isa     => 'DevEnv::VM::Module::Vagrant::Provider',
+	lazy    => 1,
+	default => sub {
+		my $self = shift;
+
+		my $provider_name = $self->project_config->{vm}{module}{Vagrant}{provider} // "virtualbox";
+
+print STDERR "Provider Name = $provider_name\n";
+
+		my $provider = undef;
+
+		my @found = usesub DevEnv::VM::Module::Vagrant::Provider;
+		foreach my $module ( @found ) {
+
+print STDERR "Module = $module\n";
+
+			my ( $module_provider_name ) = $module =~ m/([^:]+)$/;
+
+print STDERR "\tmodule_provider_name = $module_provider_name\n";
+
+			if ( $module_provider_name eq $provider_name ) {
+
+				$provider = $module->new();
+
+				last;
+			}
+		}
+
+		if ( not defined $provider ) {
+			$provider = DevEnv::VM::Module::Vagrant::Provider::none->new();
+		}
+
+		return $provider;
+	}
+);
 
 has 'vagrant_file_name' => (
 	is      => 'ro',
@@ -403,13 +443,17 @@ override 'build' => sub {
 		DevEnv::Exception->throw( "A config file is required to build a VM." );
 	}
 
+	# Ajust values in the config based on the provider
+	$self->provider->adjust_config( $self->project_config );
+
 	make_path $self->external_temp_dir->stringify;
 
 	# Make a safe hostname
 	my $hostname = $self->instance_name;
 	$hostname =~ s/[^A-Z0-9]//gi;
 
-	my $vars = {
+	# Get the temaplet vars based on provider
+	my $vars = $self->provider->template_vars({
 		uid               => $self->user_id,
 		gid               => $self->group_id,
 		box_name          => $self->instance_name,
@@ -418,7 +462,6 @@ override 'build' => sub {
 		internal_temp_dir => $self->internal_temp_dir->stringify,
 		services          => [],
 		user_home_dir     => "/home/dev",
-		provider          => $self->project_config->{vm}{module}{Vagrant}{provider} // "virtualbox",
 
 		# What host path should be mounted in the VM
 		shares            => $self->project_config->{vm}{shares} // [],
@@ -426,7 +469,7 @@ override 'build' => sub {
 		system            => $self->project_config->{vm}{module}{Vagrant}{system},
 		config            => $self->project_config
 
-	};
+	});
 
 	if ( defined $self->project_config->{general}{home_dir} and $self->project_config->{general}{home_dir} ne "" ) {
 
