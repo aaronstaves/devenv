@@ -31,18 +31,12 @@ has 'provider' => (
 
 		my $provider_name = $self->project_config->{vm}{module}{Vagrant}{provider} // "virtualbox";
 
-print STDERR "Provider Name = $provider_name\n";
-
 		my $provider = undef;
 
 		my @found = usesub DevEnv::VM::Module::Vagrant::Provider;
 		foreach my $module ( @found ) {
 
-print STDERR "Module = $module\n";
-
 			my ( $module_provider_name ) = $module =~ m/([^:]+)$/;
-
-print STDERR "\tmodule_provider_name = $module_provider_name\n";
 
 			if ( $module_provider_name eq $provider_name ) {
 

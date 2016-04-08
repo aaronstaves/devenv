@@ -135,8 +135,6 @@ sub _build_config {
 		DevEnv::Exception::Config->throw( "Cannot find any containers in config file, or no config file specified. Specifiy a config file, or check if the config file is setup correctly." );
 	}
 
-print STDERR Dumper( $final_config );
-
 	return $final_config;
 }
 
