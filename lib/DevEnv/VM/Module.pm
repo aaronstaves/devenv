@@ -142,7 +142,7 @@ sub get_avahi_service_files {
 			file => $self->avahi_service(
 				box_name => $self->instance_name,
 				name     => "Samba",
-				type     => "smg",
+				type     => "smb",
 				port     => 445,
 				protocal => "tcp"
 			)

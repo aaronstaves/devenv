@@ -256,6 +256,11 @@ override 'start' => sub {
 		DevEnv::Exception->throw( sprintf( "Cannnot find global status for %s, does it exist?", $self->instance_name ) );
 	}
 
+	copy(
+		"/etc/resolv.conf",
+		$self->instance_dir->file( "resolv.conf" )
+	);
+
 	if ( $instance_status->{state} eq "running" ) {
 		DevEnv::Exception->throw( sprintf( "Instance %s is currently running. Cannot start.", $self->instance_name ) );
 	}
@@ -397,8 +402,12 @@ sub _copy_devenv_to_vagrant {
 		);
 	}
 
-
 	make_path $self->external_temp_dir->subdir( "devenv" )->subdir( "config", "main" )->stringify;
+
+	copy(
+		"/etc/resolv.conf",
+		$self->instance_dir->file( "resolv.conf" )
+	);
 
 	my $project_config = clone( $self->project_config );
 
@@ -438,7 +447,7 @@ override 'build' => sub {
 	}
 
 	# Ajust values in the config based on the provider
-	$self->provider->adjust_config( $self->project_config );
+	my $config = $self->provider->adjust_config( $self->project_config );
 
 	make_path $self->external_temp_dir->stringify;
 
@@ -450,7 +459,9 @@ override 'build' => sub {
 	my $vars = $self->provider->template_vars({
 		uid               => $self->user_id,
 		gid               => $self->group_id,
+		box               => $self->project_config->{vm}{box},
 		box_name          => $self->instance_name,
+		instance_dir      => $self->instance_dir->stringify,
 		hostname          => $hostname,
 		config_file       => $self->project_config_file,
 		internal_temp_dir => $self->internal_temp_dir->stringify,
@@ -508,21 +519,20 @@ override 'build' => sub {
 	);
 
 	# Copy the samba config
-	$self->copy_template(
-		template_file => "vm/vagrant/smb.conf.tt",
-		dst_file      => $self->instance_dir->file( "smb.conf" ),
-		vars          => $vars
-	);
-
 	if ( $self->project_config->{vm}{enable_samba} ) {
-
-		# Copy the Vagrant template to the instance directory
 		$self->copy_template(
-			template_file => "vm/vagrant/Vagrantfile.tt",
-			dst_file      => $self->instance_dir->file( "Vagrantfile" ),
+			template_file => "vm/vagrant/smb.conf.tt",
+			dst_file      => $self->instance_dir->file( "smb.conf" ),
 			vars          => $vars
 		);
 	}
+
+	# Copy the Vagrant template to the instance directory
+	$self->copy_template(
+		template_file => "vm/vagrant/Vagrantfile.tt",
+		dst_file      => $self->instance_dir->file( "Vagrantfile" ),
+		vars          => $vars
+	);
 
     DevEnv::Config::Project->instance->instance_config_write(
         config => $self->project_config,

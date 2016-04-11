@@ -1,26 +1,22 @@
 $script = <<SCRIPT
 
+	[% IF provider == "vmware_fusion" %]
+	sed -i.bak 's/answer AUTO_KMODS_ENABLED_ANSWER no/answer AUTO_KMODS_ENABLED_ANSWER yes/g' /etc/vmware-tools/locations
+	sed -i.bak 's/answer AUTO_KMODS_ENABLED no/answer AUTO_KMODS_ENABLED yes/g' /etc/vmware-tools/locations
+	[% END %]
+
+	# Override the resolv.conf with the local one
+	if [ -f "/vagrant/resolv.conf" ]; then
+		echo "Override the resolv.conf"
+		cp "/vagrant/resolv.conf" /etc/resolv.conf
+	fi
+
 	if [ ! -f /etc/default/devenv ]; then
 
 		echo "PROVISION START"
 
 		apt-get update
-		apt-get install -yqq --force-yes avahi-daemon
-		apt-get install -yqq --force-yes cpanminus
-		apt-get install -yqq --force-yes make
-		apt-get install -yqq --force-yes curl
-		apt-get install -yqq --force-yes linux-image-virtual
-		apt-get install -yqq --force-yes linux-image-extra-virtual
-		apt-get install -yqq --force-yes lvm2
 		apt-get install -yqq --force-yes samba
-
-		curl -sSL https://get.docker.com/ | sh
-
-		cpanm Carton
-
-		service docker restart
-
-		usermod -a -G docker vagrant
 
 		mkdir -p "[% user_home_dir %]"
 
@@ -61,7 +57,7 @@ $script = <<SCRIPT
 		[% END %]
 
 		# Install DevEnv project
-		curl --silent -L https://cpanmin.us | perl - App::cpanminus
+		#curl --silent -L https://cpanmin.us | perl - App::cpanminus
 		mkdir -p /opt
 		mv "[% service.internal_temp_dir %]/devenv" /opt
 		cd /opt/devenv; carton
@@ -78,14 +74,15 @@ $script = <<SCRIPT
 		chmod a+rx /opt/devenv/etc/init.d/devenv
 
 		[% IF system.extend_drive %]
+		echo 'Adding more drive space'
 		pvcreate /dev/sdb
-		vgextend precise64 /dev/sdb
-		lvextend /dev/precise64/root /dev/sdb
-		resize2fs /dev/precise64/root 
+		vgextend [% system.vg or "debian-vg" %] /dev/sdb
+		lvextend /dev/[% system.vg or "debian-vg" %]/root /dev/sdb
+		resize2fs /dev/[% system.vg or "debian-vg" %]/root 
 		[% END %]
 
 		[% IF system.swap %]
-		echo 'swapfile not found. Adding swapfile.'
+		echo 'Adding swapfile'
 		fallocate -l [% system.swap %] /swapfile
 		chmod 600 /swapfile
 		mkswap /swapfile
@@ -94,8 +91,9 @@ $script = <<SCRIPT
 		[% END %]
 
 		[% IF config.vm.enable_samba %]
+		echo 'Adding SAMBA'
 		cp /vagrant/smb.conf /etc/samba
-		/etc/init.d/samba             restart
+		/etc/init.d/smbd restart
 		echo -ne "dev\ndev\n" | smbpasswd -a dev
 		echo -ne "vagrant\nvagrant\n" | smbpasswd -a vagrant
 		[% END %]
@@ -104,7 +102,7 @@ $script = <<SCRIPT
 	fi
 
 	[% IF config.vm.enable_samba %]
-	/etc/init.d/samba             restart
+	/etc/init.d/smbd              restart
 	[% END %]
 	/etc/init.d/avahi-daemon      restart
 	/opt/devenv/etc/init.d/devenv start
@@ -115,7 +113,7 @@ SCRIPT
 
 Vagrant.configure(2) do |config|
 
-	config.vm.box = "hashicorp/precise64"
+	config.vm.box = "[% box or "devenv/debian-jessie" %]"
 
 	[% IF home_dir %]
 	config.vm.synced_folder "[% home_dir %]", "/home/dev", create: true
@@ -164,7 +162,7 @@ Vagrant.configure(2) do |config|
 		vm.vmx["memsize"] = [% system.memory or "1024" %]
 		vm.vmx["numvcpus"] = [% system.cpus   or "1" %]
 
-		file_to_disk = './disk1.vmdk'
+		file_to_disk = '[% instance_dir %]/disk1.vmdk'
 
 		[% IF system.extend_drive %]
 		if ARGV[0] == "up" && ! File.exist?(file_to_disk)
@@ -172,10 +170,11 @@ Vagrant.configure(2) do |config|
 			vdiskmanager = '/Applications/VMware\ Fusion.app/Contents/Library/vmware-vdiskmanager'
 
 			`#{vdiskmanager} -c -s [% system.extend_drive %] -a lsilogic -t 1 #{file_to_disk}`
-			vm.vmx['scsi0:1.filename'] = file_to_disk
-			vm.vmx['scsi0:1.present']  = 'TRUE'
-			vm.vmx['scsi0:1.redo']     = ''
 		end
+
+		vm.vmx['scsi0:1.filename'] = file_to_disk
+		vm.vmx['scsi0:1.present']  = 'TRUE'
+		vm.vmx['scsi0:1.redo']     = ''
 
 		[% END %]
 
