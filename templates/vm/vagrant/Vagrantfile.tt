@@ -167,7 +167,7 @@ Vagrant.configure(2) do |config|
 		[% IF system.extend_drive %]
 		if ARGV[0] == "up" && ! File.exist?(file_to_disk)
 
-			vdiskmanager = '/Applications/VMware\ Fusion.app/Contents/Library/vmware-vdiskmanager'
+			vdiskmanager = '[% disk_manager %]'
 
 			`#{vdiskmanager} -c -s [% system.extend_drive %] -a lsilogic -t 1 #{file_to_disk}`
 		end

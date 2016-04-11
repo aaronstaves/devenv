@@ -24,3 +24,4 @@ requires 'IO::Tty';
 requires 'Expect';
 requires 'LWP::UserAgent';
 requires 'Proc::ProcessTable';
+requires 'File::Find';

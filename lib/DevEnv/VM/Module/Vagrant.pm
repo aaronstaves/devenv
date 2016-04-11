@@ -40,14 +40,18 @@ has 'provider' => (
 
 			if ( $module_provider_name eq $provider_name ) {
 
-				$provider = $module->new();
+				$provider = $module->new(
+					instance_name => $self->instance_name
+				);
 
 				last;
 			}
 		}
 
 		if ( not defined $provider ) {
-			$provider = DevEnv::VM::Module::Vagrant::Provider::none->new();
+			$provider = DevEnv::VM::Module::Vagrant::Provider::none->new(
+				instance_name => $self->instance_name
+			);
 		}
 
 		return $provider;
@@ -265,7 +269,7 @@ override 'start' => sub {
 		DevEnv::Exception->throw( sprintf( "Instance %s is currently running. Cannot start.", $self->instance_name ) );
 	}
 
-	if ( $instance_status->{state} eq "poweroff" ) {
+	if ( $instance_status->{state} eq "poweroff" or $instance_status->{state} eq "not running" ) {
 
 		$self->debug( "VM is in power off state, starting up." );
 
@@ -306,11 +310,14 @@ override 'stop' => sub {
 
 	$self->debug( "Stopping Vagrant VM" );
 
-	system sprintf( "cd %s; %s %s halt",
-		$self->instance_dir,
-		$self->vargant_params,
-		$self->vagrant
-	);
+	if ( $self->provider->stop( instance_dir => $self->instance_dir ) ) {
+
+		system sprintf( "cd %s; %s %s halt",
+			$self->instance_dir,
+			$self->vargant_params,
+			$self->vagrant
+		);
+	}
 
 	return undef;
 };

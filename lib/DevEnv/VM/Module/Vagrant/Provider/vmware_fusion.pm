@@ -1,54 +1,102 @@
 package DevEnv::VM::Module::Vagrant::Provider::vmware_fusion;
 use Moose;
+no warnings qw/once/;
 
 extends 'DevEnv::VM::Module::Vagrant::Provider';
 
 use IPC::Run;
+use Path::Class;
+use File::Find;
 
 use Data::Dumper;
 
-has 'vmware_fusion_file_name' => (
+has 'vmware_dir' => (
     is      => 'ro',
-    isa     => 'Str',
+    isa     => 'Path::Class::Dir',
+	lazy    => 1,
     default => sub {
-        return "vmware-vdiskmanager";
+		return dir( "/Applications/VMware Fusion.app/Contents/Library/" );
     }
 );
 
-has 'vmware_fusion' => (
+has 'vmware_disk_manager' => (
 	is      => 'ro',
-	isa     => 'Str',
+	isa     => 'Path::Class::File',
 	lazy    => 1,
-	builder => '_build_vmware_fusion'
-);
-sub _build_vmware_fusion {
-	my $self = shift;
+	default => sub {
 
-	return '/Applications/VMware Fusion.app/Contents/Library/' . $self->vmware_fusion_file_name;
-}
+		my $self = shift; return $self->vmware_dir->file( "vmware-vdiskmanager" );
+	}
+);
+
+has 'vmware_run' => (
+	is      => 'ro',
+	isa     => 'Path::Class::File',
+	lazy    => 1,
+	default => sub {
+
+		my $self = shift; return $self->vmware_dir->file( "vmrun" );
+	}
+);
 
 has 'version' => (
 	is      => 'ro',
 	isa     => 'Str',
 	lazy    => 1,
-	builder => '_build_version'
+	default => sub {
+		my $self = shift;
+
+		my ( $stdout, $stderr );
+		IPC::Run::run
+			[ $self->vmware_fusion ],
+			'>',  \$stdout,
+			'2>', \$stderr;
+
+		my ( $line ) = split /\n/, $stdout;
+
+		my ( $version_str ) =~ m/build (\d+).$/;
+
+		return $version_str;
+	}
 );
 sub _build_version {
 
-	my $self = shift;
-
-    my ( $stdout, $stderr );
-    IPC::Run::run
-        [ $self->vmware_fusion ],
-        '>',  \$stdout,
-        '2>', \$stderr;
-
-	my ( $line ) = split /\n/, $stdout;
-
-	my ( $version_str ) =~ m/build (\d+).$/;
-
-	return $version_str;
 }
+
+override 'stop' => sub {
+
+    my $self = shift;
+	my %args = @_;
+
+	my $instance_dir = $args{instance_dir}->subdir( ".vagrant/machines/default/vmware_fusion" );
+
+
+#	/Volumes/SL/devenv/utils/.vagrant/machines/default/vmware_fusion
+
+	my $vmx_file = undef;
+
+	find(
+		{
+			wanted => sub {
+				if ( $_ =~ m/vmx$/i ) {
+					$vmx_file = $File::Find::name;
+				}
+			}
+		},
+		$instance_dir->stringify
+	);
+
+	if ( defined $vmx_file ) {
+
+		system sprintf( '"%s" stop "%s"',
+			$self->vmware_run,
+			$vmx_file
+		);
+	}
+
+    return 1;
+};
+
 
 override 'adjust_config' => sub {
 
@@ -84,6 +132,7 @@ override 'template_vars' => sub {
 	my $vars = shift;
 
 	$vars->{provider} = 'vmware_fusion';
+	$vars->{disk_manager} = $self->vmware_disk_manager->stringify;
 
 	return $vars;
 };

@@ -13,6 +13,20 @@ sub _version_cmp {
 	my $sep     = $args{sep} // ".";
 }
 
+sub start {
+
+	my $self   = shift;
+
+	return 1;
+}
+
+sub stop {
+
+	my $self   = shift;
+
+	return 1;
+}
+
 sub adjust_config {
 
 	my $self   = shift;
