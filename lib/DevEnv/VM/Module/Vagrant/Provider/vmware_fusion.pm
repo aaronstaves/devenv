@@ -131,8 +131,11 @@ override 'template_vars' => sub {
 	my $self = shift;
 	my $vars = shift;
 
+	my $disk_manager = $self->vmware_disk_manager->stringify;
+	$disk_manager =~ s#\s#\\ #g;
+
 	$vars->{provider} = 'vmware_fusion';
-	$vars->{disk_manager} = $self->vmware_disk_manager->stringify;
+	$vars->{disk_manager} = $disk_manager;
 
 	return $vars;
 };
