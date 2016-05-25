@@ -121,7 +121,16 @@ has 'home_dir' => (
 );
 sub _build_home_dir {
 	my $self = shift;
-	return dir ( $ENV{DEVENV_MY_HOME} // $self->project_config->{general}{home_dir} // $ENV{HOME} );
+	
+	my $dir = dir (
+		$ENV{DEVENV_MY_HOME} // 
+		$self->project_config->{general}{home_dir} // 
+		sprintf( "%s/Work/Home", $ENV{HOME} )
+	);
+	
+	make_path ( $dir->stringify );
+
+	return $dir
 }
 
 has 'work_dir' => (
@@ -132,7 +141,7 @@ has 'work_dir' => (
 );
 sub _build_work_dir {
 	my $self = shift;
-	return dir ( $ENV{DEVENV_MY_WORK} // $self->project_config->{docker}{work_dir} // $ENV{HOME} );
+	return dir ($ENV{DEVENV_MY_WORK} // $self->project_config->{docker}{work_dir} // $ENV{HOME} );
 }
 
 has 'devenv_dir' => (
