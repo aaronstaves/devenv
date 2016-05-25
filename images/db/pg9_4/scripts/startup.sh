@@ -2,9 +2,11 @@
 
 /usr/local/bin/default_env.sh
 
-groupadd -g $DEVENV_MY_GID dev
-useradd -l -d /data/home/dev -s /bin/bash -m -g $DEVENV_MY_GID -u $DEVENV_MY_UID dev
-echo "dev:dev" | chpasswd
+if [ ! -d "/home/dev" ]; then
+	groupadd -g $DEVENV_MY_GID dev
+	useradd -l -d /home/dev -s /bin/bash -m -g $DEVENV_MY_GID -u $DEVENV_MY_UID dev
+	echo "dev:dev" | chpasswd
+fi
 
 mkdir -p /var/run/postgresql/9.4
 chown -R postgres:postgres /var/run/postgresql
