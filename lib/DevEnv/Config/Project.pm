@@ -96,16 +96,16 @@ sub _build_config {
 
 			my $config_file = $config_dir->subdir( "project" )->file( $self->config_file )->stringify;
 
-			print STDERR "* $config_file\n";
 		
 			$self->devenv->debug( "Checking for project config in $config_file" );
 
 			if ( -f $config_file ) {
 
+				$self->devenv->debug( "* using this config file" );
+
 				$project_config = YAML::Tiny->read( $config_file )->[0];
 				delete $project_config->{vm}{dir};
 
-				print STDERR "\tfound!\n";
 				last;
 			}
 		}
