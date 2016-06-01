@@ -103,7 +103,13 @@ has 'skip_docker_build' => (
 	documentation => "Skip docker build. Build VM only."
 );
 
-
+has 'skip_docker_start' => (
+	traits        => [ "Getopt" ],
+	isa           => 'Bool',
+	is            => 'rw',
+	cmd_aliases   => 'D',
+	documentation => "Skip starting the docker when VM is started. Start VM only."
+);
 
 sub _non_instance_command {
 
@@ -122,7 +128,8 @@ sub _non_instance_command {
 	}
 	elsif ( $self->start ) {
 		DevEnv::VM->global_start(
-			verbose => $self->verbose
+			verbose           => $self->verbose,
+			skip_docker_start => $self->skip_docker_start
 		);
 		print STDERR "VMs started\n";
 	}
@@ -148,7 +155,8 @@ sub _instance_command {
 	if ( $self->start ) {
 
 		$vm->start( 
-			tags  => $self->tag 
+			tags              => $self->tag,
+			skip_docker_start => $self->skip_docker_start
 		);
 	}
 	elsif ( $self->stop ) {

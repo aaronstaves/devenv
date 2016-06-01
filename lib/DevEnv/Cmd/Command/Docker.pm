@@ -121,14 +121,14 @@ has 'match_user' => (
 	traits        => [ "Getopt" ],
 	isa           => 'Bool',
 	is            => 'rw',
-	documentation => "Match user/group id of current user"
+	documentation => "Match user/group id of current user."
 );
 
 has 'use_home' => (
 	traits        => [ "Getopt" ],
 	isa           => 'Bool',
 	is            => 'rw',
-	documentation => "r"
+	documentation => "Use hosts user HOME directory or DEVENV_VAGRANT env."
 );
 
 after 'execute' => sub {

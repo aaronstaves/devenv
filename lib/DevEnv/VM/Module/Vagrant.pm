@@ -245,8 +245,11 @@ This method will start the VM. If the VM does not exists, it will build the VM.
 override 'start' => sub { 
 
 	my $self = shift;
+	my %args = @_;
 
 	$self->debug( "Starting Vagrant VM" );
+
+	my $skip_docker_start = $args{skip_docker_start} // 0;
 
 	if ( ! -d $self->instance_dir ) {
 		$self->build();
@@ -286,6 +289,22 @@ override 'start' => sub {
 		 DevEnv::Exception->throw( sprintf( "Instance %s is the %s state. Not sure how to start.", $self->instance_name, $instance_status->{state} ) );
 	}
 
+	if ( not $skip_docker_start ) {
+
+		my $cmd = sprintf( "cd %s; %s  %s ssh -c 'devenv docker --start %s'",
+			$self->instance_dir,
+			$self->vargant_params,
+			$self->vagrant,
+			$self->verbose?"-v":""
+		);
+
+		$self->debug( "Vagrant Start = $cmd" );
+
+		system $cmd;
+	}
+
+	print sprintf( "\nThe VM %s should be started now.\n", $self->instance_name );
+
 	return undef;
 };
 
@@ -319,6 +338,8 @@ override 'stop' => sub {
 		);
 	}
 
+	print sprintf( "\nThe VM %s should be stopped now.\n", $self->instance_name );
+
 	return undef;
 };
 
@@ -340,6 +361,8 @@ override 'suspend' => sub {
 		$self->vagrant
 	);
 
+	print sprintf( "\nThe VM %s should be suspended now.\n", $self->instance_name );
+
 	return undef;
 };
 
@@ -358,6 +381,8 @@ override 'remove' => sub {
 	system sprintf( "cd %s; %s %s destroy -f", $self->instance_dir, $self->vargant_params, $self->vagrant );
 
 	remove_tree $self->instance_dir->stringify;
+
+	print sprintf( "\nThe VM %s has been removed.\n", $self->instance_name );
 
 	return undef;
 };
@@ -561,6 +586,8 @@ override 'build' => sub {
 
 		system $cmd;
 	}
+
+	print sprintf( "\nThe VM %s has been built and started.\n", $self->instance_name );
 
 	return undef;
 };
