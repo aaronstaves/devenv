@@ -6,6 +6,7 @@ extends 'DevEnv::VM::Module::Vagrant::Provider';
 use DevEnv::Tools::Convert;
 
 use IPC::Run;
+use File::Which qw/which/;
 
 has 'virtualbox_file_name' => (
     is      => 'ro',
@@ -26,13 +27,7 @@ sub _build_virtualbox {
 	return which( $self->virtualbox_file_name );
 }
 
-has 'version' => (
-	is      => 'ro',
-	isa     => 'Str',
-	lazy    => 1,
-	builder => '_build_version'
-);
-sub _build_version {
+override '_build_version' => sub {
 
 	my $self = shift;
 
@@ -44,10 +39,10 @@ sub _build_version {
 
 	my ( $line ) = split /\n/, $stdout;
 
-	my ( $version_str ) =~ m/([\d\.]+)$/;
+	my ( $version_str ) = $line =~ m/([\d\.]+)$/;
 
-	return $version_str;
-}
+	return $self->version_number( version => $version_str );
+};
 
 override 'adjust_config' => sub {
 
@@ -83,6 +78,10 @@ override 'template_vars' => sub {
 	my $vars = shift;
 
 	$vars->{provider} = 'virtualbox';
+	$vars->{sata}     = "SATA Controller";
+	if ( $self->version > $self->version_number( version => "5.0.16" ) ) {
+		$vars->{sata} = "SATA";
+	}
 
 	return $vars;
 };
